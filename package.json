@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx scripts/test-grid.ts && tsx scripts/validate-data.ts"
+    "test": "tsx scripts/test-grid.ts && tsx scripts/test-progress.ts && tsx scripts/validate-data.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "katex": "^0.16.47",
     "next": "16.4.3",
     "react": "19.3.0",

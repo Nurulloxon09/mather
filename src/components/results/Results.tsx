@@ -2,18 +2,22 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { AppHeader } from "../AppHeader";
 import { CheckCircle, XCircle } from "../bluebook/icons";
 import { formatClock } from "../bluebook/TopBar";
+import { LocalDate } from "../LocalDate";
 import { Rich, RichInline } from "../Rich";
 import { tex } from "@/lib/rich";
 import {
   answerTex,
   correctAnswerTex,
+  getActive,
   getSession,
   isCorrect,
   newPracticeSession,
   saveSession,
+  sessionLabel,
   type ModuleState,
   type Session,
 } from "@/lib/session";
@@ -82,22 +86,22 @@ function QuestionDetail({ row }: { row: Row }) {
   );
 }
 
-export function Results({ bank }: { bank: Question[] }) {
+export function Results({ bank, id, stored }: { bank: Question[]; id: string | null; stored: Session | null }) {
   const router = useRouter();
-  const params = useSearchParams();
-  const id = params.get("id");
   const byId = useMemo(() => new Map(bank.map((q) => [q.id, q])), [bank]);
-  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  // The database copy, or this browser's copy if it hasn't been saved there yet.
+  const [local, setLocal] = useState<Session | null | undefined>(undefined);
   const [open, setOpen] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "wrong" | "marked">("all");
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- read from localStorage after mount
-    setSession(id ? (getSession(id) ?? null) : null);
-  }, [id]);
+    if (!stored) setLocal(id ? (getSession(id) ?? null) : null);
+  }, [id, stored]);
 
+  const session = stored ?? local;
   if (session === undefined) return null;
-  if (!session)
+  if (!session || !session.finishedAt)
     return (
       <div className="grid min-h-dvh place-items-center">
         <div className="text-center">
@@ -122,31 +126,26 @@ export function Results({ bank }: { bank: Question[] }) {
       return { s, c: rs.filter((r) => r.correct).length, t: rs.length };
     })
     .sort((a, b) => a.c / a.t - b.c / b.t);
-  const modules = session.mode === "exam" ? [1, 2].filter((n) => rows.some((r) => r.module === n)) : [1];
+  const fullExam = session.mode === "exam" && !session.custom;
+  const modules = fullExam ? [1, 2].filter((n) => rows.some((r) => r.module === n)) : [1];
   const shown = rows.filter((r) => (filter === "wrong" ? !r.correct : filter === "marked" ? r.marked : true));
   const wrong = rows.filter((r) => !r.correct);
 
   const practiceMissed = () => {
+    const active = getActive("practice");
+    if (active && !confirm(`"${sessionLabel(active)}" is still in progress. Start a new set instead?`)) return;
     saveSession(newPracticeSession("Missed questions", wrong.map((r) => r.q.id)));
     router.push("/practice");
   };
 
   return (
     <div className="min-h-dvh bg-[#f6f7fb]">
-      <header className="border-b border-bb-line bg-white">
-        <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
-          <Link href="/" className="text-xl font-extrabold tracking-tight">
-            mather
-          </Link>
-          <span className="text-sm text-bb-muted">Results</span>
-        </div>
-      </header>
-      <main className="mx-auto max-w-5xl space-y-6 px-6 py-8">
+      <AppHeader />
+      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
         <section className="flex flex-wrap items-end gap-8 rounded-2xl border border-bb-line bg-white p-6">
           <div>
             <p className="text-sm font-semibold text-bb-muted">
-              {session.mode === "exam" ? "Full exam" : `Practice: ${session.title}`} ·{" "}
-              {new Date(session.finishedAt ?? session.createdAt).toLocaleString()}
+              {sessionLabel(session)} · <LocalDate ms={session.finishedAt} />
             </p>
             <p className="mt-1 text-5xl font-extrabold">
               {correct}
@@ -154,7 +153,7 @@ export function Results({ bank }: { bank: Question[] }) {
             </p>
             <p className="mt-1 font-semibold">Raw score · {pct(correct, rows.length)}% correct</p>
           </div>
-          {session.mode === "exam" &&
+          {fullExam &&
             modules.map((n) => {
               const rs = rows.filter((r) => r.module === n);
               return (
@@ -255,7 +254,7 @@ export function Results({ bank }: { bank: Question[] }) {
                       className="cursor-pointer border-t border-bb-bar hover:bg-[#f7f8fc]"
                     >
                       <td className="whitespace-nowrap px-6 py-3 font-bold">
-                        {session.mode === "exam" ? `M${r.module}·` : ""}
+                        {fullExam ? `M${r.module}·` : ""}
                         {r.number}
                       </td>
                       <td className="py-3 pr-3">

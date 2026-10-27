@@ -81,4 +81,6 @@ export type ItemState = {
   timeMs: number;
   /** Practice mode: the answer was checked. */
   checked?: boolean;
+  /** When the answer was checked (ms since epoch). */
+  checkedAt?: number;
 };

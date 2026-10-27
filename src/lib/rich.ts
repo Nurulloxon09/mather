@@ -4,7 +4,7 @@ import katex from "katex";
 
 export type Block =
   | { t: "p"; html: string }
-  | { t: "math"; html: string }
+  | { t: "math"; html: string; src: string }
   | { t: "ul"; items: string[] }
   | { t: "img"; src: string; alt: string; width?: number }
   | { t: "table"; caption?: string; head?: string[]; rows: string[][] };
@@ -79,7 +79,8 @@ export function parseBlocks(src: string): Block[] {
   const parts = src.split(/(\$\$[\s\S]*?\$\$)/);
   for (const part of parts) {
     if (part.startsWith("$$") && part.endsWith("$$") && part.length >= 4) {
-      blocks.push({ t: "math", html: tex(part.slice(2, -2).trim(), true) });
+      const src = part.slice(2, -2).trim();
+      blocks.push({ t: "math", html: tex(src, true), src });
       continue;
     }
     for (const chunk of part.split(/\n\s*\n/)) {

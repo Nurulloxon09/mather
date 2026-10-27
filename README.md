@@ -15,7 +15,29 @@ npm run build      # production build
 Optional: set `NEXT_PUBLIC_DESMOS_API_KEY` in `.env.local` to use your own Desmos key.
 Without it, the app uses Desmos's public demo key, which is fine for personal use.
 
-Deploying to Vercel: import the repo with no extra configuration. Phase 1 is fully static.
+## Database
+
+Every attempt and finished test is saved to a SQLite database (libSQL).
+
+- **Locally** nothing to set up: it's a file at `.data/mather.db`, created on first use.
+- **On Vercel** use a free [Turso](https://turso.tech) database:
+  1. Sign up at turso.tech (GitHub login works) and create a database.
+  2. Copy its URL (`libsql://…`) and create a token for it.
+  3. In Vercel → your project → Settings → Environment Variables, add
+     `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`.
+  4. Redeploy (Deployments → ⋯ → Redeploy). Tables are created automatically.
+
+  Connecting Turso from Vercel's Storage tab also works; prefixed variable names such as
+  `STORAGE_TURSO_DATABASE_URL` are picked up.
+
+Until a database is connected, the home page shows a notice and progress stays in the browser.
+Writes always go to a queue in the browser first (`src/lib/outbox.ts`) and are uploaded in the
+background, so nothing is lost if the network or database is briefly unavailable. Results from before
+the database existed are uploaded the first time you open the app with one connected.
+
+Tables (`src/server/db.ts`):
+- `attempts`: one row per question per test or set: answer, correct, time spent, mode, marked.
+- `sessions`: each finished practice set, timed set or exam, with its full state for the results page.
 
 ## What's here (Phase 1)
 
@@ -34,7 +56,20 @@ Deploying to Vercel: import the repo with no extra configuration. Phase 1 is ful
   - Long decimals are accepted only when truncated or rounded to fill the box.
   - Questions can have several correct answers.
 
-Progress is kept in `localStorage` for now. Phase 2 moves it to a database.
+## Question bank (Phase 2)
+
+`/bank` lists every question with filters for status (unanswered, incorrect, correct, marked for
+review), domain, skill, difficulty, type and source. Filters combine (OR inside a group, AND across
+groups) and live in the URL, so `/bank?status=incorrect&domain=Advanced+Math&difficulty=Hard` is a
+link to "hard Advanced Math questions I got wrong".
+
+From any filter, start a set of N questions:
+- **Practice**: Check after each question, as above.
+- **Timed**: one module with Bluebook timing (35 min per 22 questions, rounded up), no feedback until
+  you submit, then a results page.
+
+Status uses your most recent attempt: "Incorrect" means you got it wrong the last time you answered it.
+Click a question to see it in full, reveal the answer and explanation, and see every attempt.
 
 ## Question data
 
@@ -87,6 +122,6 @@ Each correction is explained in the question's explanation.
 ## Roadmap
 
 1. ~~Bluebook exam UI with book questions, both modes~~
-2. Database (SQLite/libSQL locally, Turso when deployed), question bank with filters, custom sets, attempt saving
+2. ~~Database (SQLite/libSQL locally, Turso when deployed), question bank with filters, custom sets, attempt saving~~
 3. Upload PDF/image/DOCX → extraction (Gemini) → side-by-side review → publish
 4. Full results history and stats page (accuracy by domain/skill, weakest areas)

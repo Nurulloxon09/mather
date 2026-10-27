@@ -6,7 +6,9 @@ import { CheckCircle, XCircle } from "../bluebook/icons";
 import { QuestionView } from "../bluebook/QuestionView";
 import { formatClock } from "../bluebook/TopBar";
 import { Rich } from "../Rich";
+import { attemptFor } from "@/lib/attempts";
 import { addTime, currentId, goTo, gridCells, patchItem, setAnswer, toggleCross, toggleMark } from "@/lib/module";
+import { flush, flushWithin, queue } from "@/lib/outbox";
 import {
   answerTex,
   correctAnswerTex,
@@ -86,6 +88,14 @@ function ResultModal({
   );
 }
 
+/** Queue a checked answer for saving; returns the time it was checked. */
+function saveChecked(session: PracticeSession, m: ModuleState, qid: string, marked?: boolean, at = Date.now()) {
+  const a = attemptFor(session, m, qid, at);
+  queue({ attempts: [marked === undefined ? a : { ...a, marked }] });
+  void flush();
+  return at;
+}
+
 export function PracticeRunner({ bank }: { bank: Question[] }) {
   const router = useRouter();
   const byId = useMemo(() => new Map(bank.map((q) => [q.id, q])), [bank]);
@@ -129,13 +139,26 @@ export function PracticeRunner({ bank }: { bank: Question[] }) {
   const item = m.items[qid] ?? { timeMs: 0 };
   const last = m.index === m.questionIds.length - 1;
   const title = `Practice: ${session.title}`;
-  const finish = () => {
+  const finish = async () => {
     const done = { ...session, finishedAt: Date.now() };
     saveSession(done);
+    queue({ sessions: [done] });
     setSession(done);
+    // Give the save a moment so the results page can load it from the database.
+    await flushWithin(4000);
     router.push(`/results?id=${done.id}`);
   };
-  const next = () => (last ? finish() : updateModule((x) => goTo(x, x.index + 1)));
+  const next = () => (last ? void finish() : updateModule((x) => goTo(x, x.index + 1)));
+  const check = () => {
+    const at = saveChecked(session, m, qid);
+    updateModule((x) => patchItem(x, qid, { checked: true, checkedAt: at }));
+    setShowResult(true);
+  };
+  const mark = () => {
+    updateModule(toggleMark);
+    // A checked question is already saved; send the new mark along with it.
+    if (item.checked) saveChecked(session, m, qid, !item.marked, item.checkedAt);
+  };
 
   return (
     <TestShell
@@ -147,7 +170,7 @@ export function PracticeRunner({ bank }: { bank: Question[] }) {
       timerLocked={false}
       onToggleTimer={() => setSession({ ...session, timerHidden: !session.timerHidden })}
       moreItems={[
-        { label: "Finish Set", onClick: finish },
+        { label: "Finish Set", onClick: () => void finish() },
         { label: "Save and Exit", onClick: () => router.push("/") },
       ]}
       index={m.index}
@@ -162,13 +185,7 @@ export function PracticeRunner({ bank }: { bank: Question[] }) {
             </button>
           )}
           {item.answer && !item.checked ? (
-            <button
-              className="bb-btn bb-btn-primary"
-              onClick={() => {
-                updateModule((x) => patchItem(x, qid, { checked: true }));
-                setShowResult(true);
-              }}
-            >
+            <button className="bb-btn bb-btn-primary" onClick={check}>
               Check
             </button>
           ) : (
@@ -188,7 +205,7 @@ export function PracticeRunner({ bank }: { bank: Question[] }) {
           strikeMode={strike}
           onToggleStrike={() => setStrike((v) => !v)}
           onAnswer={(a) => updateModule((x) => setAnswer(x, a))}
-          onToggleMark={() => updateModule(toggleMark)}
+          onToggleMark={mark}
           onCross={(l) => updateModule((x) => toggleCross(x, l))}
           locked={!!item.checked}
           reveal={item.checked && q.type === "mcq" ? { correctLetter: q.answer } : null}

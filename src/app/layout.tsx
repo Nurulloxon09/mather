@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans, Noto_Serif } from "next/font/google";
 import "katex/dist/katex.min.css";
+import { SyncAgent } from "@/components/SyncAgent";
 import "./globals.css";
 
 const ui = Noto_Sans({
@@ -21,7 +22,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${ui.variable} ${content.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <SyncAgent />
+      </body>
     </html>
   );
 }
