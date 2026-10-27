@@ -1,0 +1,224 @@
+@import "tailwindcss";
+
+:root {
+  --bb-blue: #324dc7;
+  --bb-blue-dark: #263b9e;
+  --bb-blue-soft: #e8ecfa;
+  --bb-ink: #1e1e1e;
+  --bb-muted: #5f6368;
+  --bb-line: #c6c6c6;
+  --bb-bar: #f0f0f0;
+  --bb-chrome: #f5f7fc;
+  --bb-yellow: #fedb00;
+  --bb-red: #c13145;
+  --bb-green: #12805c;
+}
+
+@theme inline {
+  --color-bb-blue: var(--bb-blue);
+  --color-bb-blue-dark: var(--bb-blue-dark);
+  --color-bb-blue-soft: var(--bb-blue-soft);
+  --color-bb-ink: var(--bb-ink);
+  --color-bb-muted: var(--bb-muted);
+  --color-bb-line: var(--bb-line);
+  --color-bb-bar: var(--bb-bar);
+  --color-bb-chrome: var(--bb-chrome);
+  --color-bb-yellow: var(--bb-yellow);
+  --color-bb-red: var(--bb-red);
+  --color-bb-green: var(--bb-green);
+  --font-sans: var(--font-ui), system-ui, sans-serif;
+  --font-serif: var(--font-content), Georgia, serif;
+}
+
+html,
+body {
+  background: #fff;
+  color: var(--bb-ink);
+}
+
+body {
+  font-family: var(--font-ui), system-ui, sans-serif;
+}
+
+/* Dashed rule used under the top bar and above the bottom bar. */
+.bb-dash {
+  height: 2px;
+  background-image: linear-gradient(to right, #1e1e1e 55%, transparent 45%);
+  background-size: 14px 2px;
+  background-repeat: repeat-x;
+}
+
+/* ---------- Question content ---------- */
+.rich {
+  font-family: var(--font-content), Georgia, serif;
+  font-size: 17px;
+  line-height: 1.6;
+}
+.rich p + p,
+.rich p + .rich-math,
+.rich .rich-math + p,
+.rich p + .rich-table-wrap,
+.rich .rich-table-wrap + p,
+.rich p + .rich-img,
+.rich .rich-img + p,
+.rich .rich-img + .rich-table-wrap,
+.rich .rich-table-wrap + .rich-img {
+  margin-top: 0.85em;
+}
+.rich-math {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.15em 0;
+}
+.rich-math .katex-display {
+  margin: 0.4em 0;
+}
+.rich-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-left: auto;
+  margin-right: auto;
+}
+.rich-table-wrap {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+.rich-table {
+  border-collapse: collapse;
+  font-size: 16px;
+  margin: 0.25em 0;
+}
+.rich-table caption {
+  font-weight: 700;
+  padding-bottom: 6px;
+}
+.rich-table th,
+.rich-table td {
+  border: 1px solid #1e1e1e;
+  padding: 6px 16px;
+  text-align: center;
+}
+.rich-table th {
+  font-weight: 700;
+  background: #f4f4f4;
+}
+.katex {
+  font-size: 1.08em;
+}
+
+/* ---------- Answer choices ---------- */
+.bb-choice {
+  border: 1.5px solid #1e1e1e;
+  border-radius: 8px;
+  transition: box-shadow 80ms;
+}
+.bb-choice:hover:not([data-disabled="true"]) {
+  box-shadow: 0 0 0 1px #1e1e1e;
+}
+.bb-choice[data-selected="true"] {
+  border-color: var(--bb-blue);
+  box-shadow: 0 0 0 2px var(--bb-blue);
+}
+.bb-choice[data-result="correct"] {
+  border-color: var(--bb-green);
+  box-shadow: 0 0 0 2px var(--bb-green);
+}
+.bb-choice[data-result="wrong"] {
+  border-color: var(--bb-red);
+  box-shadow: 0 0 0 2px var(--bb-red);
+}
+.bb-letter {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 1.5px solid #1e1e1e;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: var(--font-ui), system-ui, sans-serif;
+}
+.bb-choice[data-selected="true"] .bb-letter {
+  background: var(--bb-blue);
+  border-color: var(--bb-blue);
+  color: #fff;
+}
+.bb-choice[data-crossed="true"] .bb-choice-body {
+  opacity: 0.45;
+}
+.bb-choice[data-crossed="true"]::after {
+  content: "";
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: 50%;
+  border-top: 2px solid #1e1e1e;
+  pointer-events: none;
+}
+
+/* ---------- Buttons ---------- */
+.bb-btn {
+  border-radius: 999px;
+  font-weight: 700;
+  padding: 0.55rem 1.4rem;
+  font-size: 15px;
+  transition: background 100ms;
+}
+.bb-btn-primary {
+  background: var(--bb-blue);
+  color: #fff;
+}
+.bb-btn-primary:hover {
+  background: var(--bb-blue-dark);
+}
+.bb-btn-primary:disabled {
+  background: #9aa6d8;
+  cursor: not-allowed;
+}
+.bb-btn-outline {
+  border: 1.5px solid #1e1e1e;
+  background: #fff;
+}
+.bb-btn-outline:hover {
+  background: #f2f2f2;
+}
+.bb-btn-yellow {
+  background: var(--bb-yellow);
+  color: #1e1e1e;
+}
+.bb-btn-yellow:hover {
+  background: #f1cf00;
+}
+
+/* ---------- Navigator / review grid ---------- */
+.bb-cell {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 15px;
+  border-radius: 2px;
+}
+.bb-cell[data-answered="false"] {
+  border: 1.5px dashed #6b6b6b;
+  color: var(--bb-blue);
+}
+.bb-cell[data-answered="true"] {
+  background: var(--bb-blue);
+  color: #fff;
+  border: 1.5px solid var(--bb-blue);
+}
+.bb-cell:hover {
+  outline: 2px solid #1e1e1e;
+  outline-offset: 1px;
+}
+
+/* Desmos fills its container */
+.dcg-container {
+  font-family: system-ui, sans-serif;
+}
