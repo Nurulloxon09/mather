@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# mather
 
-## Getting Started
+A personal Digital SAT Math practice app that looks and behaves like the real test in Bluebook:
+same layout, tools, timer and pressure. Single user, no accounts.
 
-First, run the development server:
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm test           # grid-in answer rules + question bank checks
+npm run build      # production build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Optional: set `NEXT_PUBLIC_DESMOS_API_KEY` in `.env.local` to use your own Desmos key.
+Without it, the app uses Desmos's public demo key, which is fine for personal use.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Deploying to Vercel: import the repo with no extra configuration. Phase 1 is fully static.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## What's here (Phase 1)
 
-## Learn More
+- **Bluebook UI** (`src/components/bluebook/`)
+  - Top bar: section title, Directions dropdown, countdown with Hide/Show (locked visible with a warning at 5:00), Calculator, Reference, Fullscreen, More.
+  - Desmos graphing calculator and reference sheet in draggable, resizable panels.
+  - Question header: number box, Mark for Review, "ABC" answer elimination.
+  - Multiple-choice answer boxes, and a grid-in split view with directions on the left and the answer box plus live Answer Preview on the right.
+  - Bottom bar: your name, a "Question X of Y" navigator, Back/Next.
+  - A "Check Your Work" page at the end of each module.
+- **Practice mode** (`/practice`): click Check to see Correct/Incorrect, the correct answer, the explanation and your time on the question.
+- **Exam mode** (`/exam`): 2 modules × 22 questions × 35 minutes. No feedback during the test. Optional adaptive Module 2 (harder or easier based on Module 1). Auto-submits at 0:00. Results page with raw score, accuracy by domain and skill, and every question with its explanation.
+- **Grid-in checking** (`src/lib/grid.ts`) follows SAT entry rules:
+  - Max 5 characters, or 6 with a negative sign.
+  - Fractions and decimals both count, as do equivalent forms (3/4 = .75 = 0.75).
+  - Long decimals are accepted only when truncated or rounded to fill the box.
+  - Questions can have several correct answers.
 
-To learn more about Next.js, take a look at the following resources:
+Progress is kept in `localStorage` for now. Phase 2 moves it to a database.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Question data
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Questions live in `src/data/` as TypeScript, using a small markup that the review screen will reuse later:
 
-## Deploy on Vercel
+- `$...$` for inline LaTeX and `$$...$$` for display LaTeX (rendered with KaTeX)
+- `\$` for a dollar sign, `**bold**`
+- `- item` lines for bullet lists
+- `| a | b |` rows for tables
+- `![alt](/figures/x.png){w=300}` for figures
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Figures are cropped from the source PDF with the watermark removed (`public/figures/mhb/`).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Math Hard Book (Algebra + Advanced Math)
+
+150 questions: 37 Algebra and 113 Advanced Math, all tagged Hard. Every question has a written explanation. The book only had answer keys, so each answer was re-derived and checked, with SymPy for the algebra-heavy ones.
+
+**Answer key corrections:**
+- Algebra: #31 (key D, correct B)
+- Advanced Math:
+  - #22 (B → D)
+  - #50 (−47 → 23)
+  - #53 (173 → 171)
+  - #58 (B → A)
+  - #59 (A → C)
+  - #60 (162 → 4)
+  - #61 (D → C)
+  - #65 (C → B)
+  - #82 (D → C)
+  - #83 (C → A)
+  - #88 (10 → 12)
+- #47, #97 and #99 had letter keys but no answer choices. They're grid-ins with answers −32, −11 and 10.
+
+Each correction is explained in the question's explanation.
+
+**Repaired from the printed version** (each one says so in its explanation):
+- Algebra #32 (Website P's pricing was missing)
+- Advanced Math:
+  - #25 (no choices printed, so it's a grid-in)
+  - #51 and #79 (equation missing)
+  - #57 ("months" vs "years")
+  - #71 (garbled)
+  - #84 (wording)
+  - #89 (typesetting)
+
+**Flagged** because they can't be fixed confidently: Algebra #14 and Advanced Math #11, #22, #76 and #108. They show a "source issue" note and are never used in exams.
+
+**Skipped duplicates:** Advanced Math #6, #38, #95, #96, #117 and #119–123 repeat earlier questions.
+
+## Roadmap
+
+1. ~~Bluebook exam UI with book questions, both modes~~
+2. Database (SQLite/libSQL locally, Turso when deployed), question bank with filters, custom sets, attempt saving
+3. Upload PDF/image/DOCX → extraction (Gemini) → side-by-side review → publish
+4. Full results history and stats page (accuracy by domain/skill, weakest areas)

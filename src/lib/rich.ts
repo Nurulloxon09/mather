@@ -5,6 +5,7 @@ import katex from "katex";
 export type Block =
   | { t: "p"; html: string }
   | { t: "math"; html: string }
+  | { t: "ul"; items: string[] }
   | { t: "img"; src: string; alt: string; width?: number }
   | { t: "table"; caption?: string; head?: string[]; rows: string[][] };
 
@@ -112,6 +113,25 @@ export function parseBlocks(src: string): Block[] {
           head,
           rows: body.map(splitRow),
         });
+        continue;
+      }
+      // "- item" lines become a bulleted list; other lines stay paragraphs.
+      if (lines.some((l) => l.startsWith("- "))) {
+        let para: string[] = [];
+        const flushPara = () => {
+          if (para.length) blocks.push({ t: "p", html: inlineHtml(para.join("\n")) });
+          para = [];
+        };
+        for (const l of lines) {
+          if (l.startsWith("- ")) {
+            flushPara();
+            const last = blocks[blocks.length - 1];
+            const html = inlineHtml(l.slice(2));
+            if (last?.t === "ul") last.items.push(html);
+            else blocks.push({ t: "ul", items: [html] });
+          } else para.push(l);
+        }
+        flushPara();
         continue;
       }
       blocks.push({ t: "p", html: inlineHtml(s) });

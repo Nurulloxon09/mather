@@ -14,6 +14,14 @@ export function Rich({ src, className }: { src: string; className?: string }) {
             return (
               <div key={i} className="rich-math" dangerouslySetInnerHTML={{ __html: b.html }} />
             );
+          case "ul":
+            return (
+              <ul key={i} className="rich-ul">
+                {b.items.map((h, j) => (
+                  <li key={j} dangerouslySetInnerHTML={{ __html: h }} />
+                ))}
+              </ul>
+            );
           case "img":
             return (
               // eslint-disable-next-line @next/next/no-img-element

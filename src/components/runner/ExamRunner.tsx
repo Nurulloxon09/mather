@@ -23,6 +23,8 @@ const WARNING_AT = 5 * 60;
 export function ExamRunner({ bank }: { bank: Question[] }) {
   const router = useRouter();
   const byId = useMemo(() => new Map(bank.map((q) => [q.id, q])), [bank]);
+  // Questions with known source problems never go into an exam.
+  const pool = useMemo(() => bank.filter((q) => !q.flag), [bank]);
   const [session, setSession] = useState<ExamSession | null | undefined>(undefined);
   const [name, setName] = useState("");
   const [loadingNext, setLoadingNext] = useState(false);
@@ -60,7 +62,7 @@ export function ExamRunner({ bank }: { bank: Question[] }) {
     if (s.current === 0) {
       const { correct, total } = moduleScore(done, byId);
       const route = s.adaptive ? routeFor(correct, total) : undefined;
-      const ids = buildModule(bank, route ?? "standard", new Set(done.questionIds));
+      const ids = buildModule(pool, route ?? "standard", new Set(done.questionIds));
       setSession({ ...s, modules: [done, newModule(ids)], current: 1, route });
       setLoadingNext(true);
       setTimeout(() => setLoadingNext(false), 1800);
@@ -68,9 +70,10 @@ export function ExamRunner({ bank }: { bank: Question[] }) {
       const finished: ExamSession = { ...s, modules: [s.modules[0], done], finishedAt: now };
       saveSession(finished);
       latest.current = finished;
+      setSession(finished);
       router.push(`/results?id=${finished.id}`);
     }
-  }, [bank, byId, router]);
+  }, [pool, byId, router]);
 
   // One-second clock: counts the module down and charges time to the visible question.
   const running = !!session && !session.finishedAt && !loadingNext;

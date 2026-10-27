@@ -8,6 +8,7 @@ import { formatClock } from "../bluebook/TopBar";
 import { Rich } from "../Rich";
 import { addTime, currentId, goTo, gridCells, patchItem, setAnswer, toggleCross, toggleMark } from "@/lib/module";
 import {
+  answerTex,
   correctAnswerTex,
   getActive,
   getSettings,
@@ -17,7 +18,6 @@ import {
   type PracticeSession,
 } from "@/lib/session";
 import { tex } from "@/lib/rich";
-import { entryToTex } from "@/lib/grid";
 import type { Question } from "@/lib/types";
 import { CenterMessage, Modal, TestShell } from "./TestShell";
 
@@ -55,7 +55,7 @@ function ResultModal({
           <div>
             <span className="font-semibold">Your answer: </span>
             {answer ? (
-              <span dangerouslySetInnerHTML={{ __html: tex(q.type === "mcq" ? answer : entryToTex(answer)) }} />
+              <span dangerouslySetInnerHTML={{ __html: tex(answerTex(q, answer)) }} />
             ) : (
               <span className="text-bb-muted">—</span>
             )}

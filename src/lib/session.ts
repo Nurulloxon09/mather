@@ -1,4 +1,4 @@
-import { entryToTex, isGridCorrect } from "./grid";
+import { entryToTex, isGridCorrect, maxLength, parseValue } from "./grid";
 import type { ItemState, Question } from "./types";
 
 export const MODULE_SECONDS = 35 * 60;
@@ -159,8 +159,23 @@ export function isCorrect(q: Question, answer: string | undefined) {
 
 /** LaTeX for the correct answer(s), for feedback and results screens. */
 export function correctAnswerTex(q: Question) {
-  if (q.type === "mcq") return q.answer ?? "";
-  return (q.gridAnswers ?? []).map(entryToTex).join(",\\ ");
+  if (q.type === "mcq") return answerTex(q, q.answer);
+  return (q.gridAnswers ?? [])
+    .map((a) => {
+      const v = parseValue(a);
+      // Fractions too long for the answer box also show the decimal to enter.
+      if (v && a.includes("/") && a.length > maxLength(a)) {
+        return `${entryToTex(a)} \\approx ${(Number(v.n) / Number(v.d)).toFixed(3).replace(/\.?0+$/, "")}`;
+      }
+      return entryToTex(a);
+    })
+    .join(",\\ ");
+}
+
+/** LaTeX for a student's answer (choice letters in upright type). */
+export function answerTex(q: Question, answer: string | undefined) {
+  if (!answer) return "";
+  return q.type === "mcq" ? `\\text{${answer}}` : entryToTex(answer);
 }
 
 export function moduleScore(m: ModuleState, byId: Map<string, Question>) {

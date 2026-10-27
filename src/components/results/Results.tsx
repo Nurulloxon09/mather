@@ -6,9 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle, XCircle } from "../bluebook/icons";
 import { formatClock } from "../bluebook/TopBar";
 import { Rich, RichInline } from "../Rich";
-import { entryToTex } from "@/lib/grid";
 import { tex } from "@/lib/rich";
 import {
+  answerTex,
   correctAnswerTex,
   getSession,
   isCorrect,
@@ -266,7 +266,7 @@ export function Results({ bank }: { bank: Question[] }) {
                       </td>
                       <td className="py-3">
                         {r.answer ? (
-                          <span dangerouslySetInnerHTML={{ __html: tex(r.q.type === "mcq" ? r.answer : entryToTex(r.answer)) }} />
+                          <span dangerouslySetInnerHTML={{ __html: tex(answerTex(r.q, r.answer)) }} />
                         ) : (
                           <span className="text-bb-muted">—</span>
                         )}

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "tsx scripts/test-grid.ts && tsx scripts/validate-data.ts"
   },
   "dependencies": {
     "katex": "^0.16.47",
