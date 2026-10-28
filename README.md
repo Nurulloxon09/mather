@@ -45,7 +45,7 @@ Tables (`src/server/db.ts`):
   - Top bar: section title, Directions dropdown, countdown with Hide/Show (locked visible with a warning at 5:00), Calculator, Reference, Fullscreen, More.
   - Desmos graphing calculator and reference sheet in draggable, resizable panels.
   - Question header: number box, Mark for Review, "ABC" answer elimination.
-  - Multiple-choice answer boxes, and a grid-in split view with directions on the left and the answer box plus live Answer Preview on the right.
+  - Multiple-choice answer boxes, and a grid-in answer box with live Answer Preview. The grid-in entry rules are in the Directions dropdown.
   - Bottom bar: your name, a "Question X of Y" navigator, Back/Next.
   - A "Check Your Work" page at the end of each module.
 - **Practice mode** (`/practice`): click Check to see Correct/Incorrect, the correct answer, the explanation and your time on the question.

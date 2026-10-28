@@ -2,7 +2,7 @@ import { tex } from "@/lib/rich";
 
 const T = ({ s }: { s: string }) => <span dangerouslySetInnerHTML={{ __html: tex(s) }} />;
 
-/** Student-produced response directions; shown in the left pane of grid-in questions. */
+/** Student-produced response directions; part of the "Directions" dropdown. */
 export function SprDirections() {
   return (
     <div className="space-y-4 text-[15px] leading-relaxed">

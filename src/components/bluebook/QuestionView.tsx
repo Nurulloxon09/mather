@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { entryToTex, isAllowedPartial } from "@/lib/grid";
 import { tex } from "@/lib/rich";
 import { LETTERS, type ChoiceLetter, type ItemState, type Question } from "@/lib/types";
 import { Rich } from "../Rich";
-import { SprDirections } from "./Directions";
 import { BookmarkIcon, StrikeToggleIcon } from "./icons";
 
 export type Reveal = { correctLetter?: ChoiceLetter } | null;
@@ -164,52 +162,6 @@ function GridInput({
   );
 }
 
-/** Resizable left/right split used for grid-in questions. */
-function Split({ left, right }: { left: React.ReactNode; right: React.ReactNode }) {
-  const [pct, setPct] = useState(48);
-  const box = useRef<HTMLDivElement>(null);
-  const dragging = useRef(false);
-  useEffect(() => {
-    const move = (e: PointerEvent) => {
-      if (!dragging.current || !box.current) return;
-      const r = box.current.getBoundingClientRect();
-      setPct(Math.min(75, Math.max(25, ((e.clientX - r.left) / r.width) * 100)));
-    };
-    const up = () => {
-      dragging.current = false;
-      document.body.style.userSelect = "";
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-  }, []);
-  return (
-    <div ref={box} className="flex h-full min-h-0">
-      <div className="min-h-0 overflow-auto px-10 py-8" style={{ width: `${pct}%` }}>
-        {left}
-      </div>
-      <div
-        onPointerDown={(e) => {
-          e.preventDefault();
-          dragging.current = true;
-          document.body.style.userSelect = "none";
-        }}
-        className="group relative w-[6px] shrink-0 cursor-col-resize bg-bb-line"
-        role="separator"
-        aria-orientation="vertical"
-      >
-        <div className="absolute left-1/2 top-1/2 flex h-10 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded border border-[#1e1e1e] bg-white text-[10px] font-bold group-hover:bg-bb-blue-soft">
-          ‖
-        </div>
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto px-10 py-8">{right}</div>
-    </div>
-  );
-}
-
 export function QuestionView({
   q,
   number,
@@ -244,37 +196,27 @@ export function QuestionView({
     />
   );
 
-  if (q.type === "spr") {
-    return (
-      <Split
-        left={<SprDirections />}
-        right={
-          <div className="max-w-[640px]">
-            {header}
-            <Rich src={q.stem} />
-            <GridInput value={item.answer ?? ""} locked={locked} onChange={onAnswer} />
-          </div>
-        }
-      />
-    );
-  }
-
+  // Grid-in entry rules live in the Directions dropdown, so both types share one centered column.
   return (
     <div className="h-full overflow-auto">
       <div className="mx-auto max-w-[720px] px-6 py-8">
         {header}
         <Rich src={q.stem} />
-        <div className="mt-6">
-          <Choices
-            q={q}
-            item={item}
-            strikeMode={strikeMode}
-            locked={locked}
-            reveal={reveal}
-            onAnswer={onAnswer}
-            onCross={onCross}
-          />
-        </div>
+        {q.type === "spr" ? (
+          <GridInput value={item.answer ?? ""} locked={locked} onChange={onAnswer} />
+        ) : (
+          <div className="mt-6">
+            <Choices
+              q={q}
+              item={item}
+              strikeMode={strikeMode}
+              locked={locked}
+              reveal={reveal}
+              onAnswer={onAnswer}
+              onCross={onCross}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
