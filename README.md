@@ -111,6 +111,25 @@ From any filter, start a set of N questions:
 Status uses your most recent attempt: "Incorrect" means you got it wrong the last time you answered it.
 Click a question to see it in full, reveal the answer and explanation, and see every attempt.
 
+## Progress (Phase 4)
+
+- **Stats** (`/stats`), scoped by one period filter (all time, last 30 days, last 7 days):
+  - estimated SAT Math score from the latest full exam, with its range and the change since the exam before
+  - questions answered, accuracy, time per question against SAT pace (35 min / 22 questions ≈ 1:35),
+    days practiced and streak, questions not tried yet
+  - questions answered and accuracy per day or week, and the score estimate per exam (each chart has
+    a "Show as table" view)
+  - weakest skills (at least 3 answers each), each with a "Practice these" link to the bank filtered to
+    that skill's missed and unanswered questions; accuracy by domain, every skill, difficulty, practice vs
+    tests; and the slowest questions
+- **History** (`/history`): every finished exam, timed set and practice set, filterable, linking to results.
+- **Results** pages add the score estimate for full exams, average time against SAT pace with slow
+  questions marked, and a link to drill the skill missed most.
+
+**Score estimate** (`src/lib/score.ts`): College Board doesn't publish a raw-to-scaled table for the
+adaptive test, so the estimate follows typical Bluebook practice-test ranges, scaled to 44 questions.
+The harder Module 2 can reach 800; the easier one tops out near 650. Shown with a ±30 range.
+
 ## Question data
 
 Built-in questions live in `src/data/` as TypeScript; uploaded ones are stored in the database. Both use the same small markup:
@@ -164,4 +183,4 @@ Each correction is explained in the question's explanation.
 1. ~~Bluebook exam UI with book questions, both modes~~
 2. ~~Database (SQLite/libSQL locally, Turso when deployed), question bank with filters, custom sets, attempt saving~~
 3. ~~Upload PDF/image/DOCX → extraction (Gemini) → side-by-side review → publish~~
-4. Full results history and stats page (accuracy by domain/skill, weakest areas)
+4. ~~Full results history and stats page (accuracy by domain/skill, weakest areas)~~

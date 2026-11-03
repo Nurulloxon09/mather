@@ -18,12 +18,11 @@ import {
   saveSettings,
   sessionLabel,
   sessionModules,
-  sessionScore,
   type Session,
 } from "@/lib/session";
+import { mergeSessions, type SessionSummary } from "@/lib/history";
 import type { Question } from "@/lib/types";
 import type { DbMode } from "@/server/db";
-import type { SessionSummary } from "@/server/progress";
 
 export type RecentData = { sessions: SessionSummary[] | null; mode: DbMode; error: boolean };
 
@@ -69,19 +68,7 @@ function Recent({ recent, byId }: { recent: Promise<RecentData>; byId: Map<strin
     setLocal(listFinished());
   }, []);
 
-  const rows = useMemo(() => {
-    const out: SessionSummary[] = [...(sessions ?? [])];
-    const known = new Set(out.map((s) => s.id));
-    // The server list is a top 8; anything older than its last row is off the list on purpose.
-    const cutoff = sessions && sessions.length >= 8 ? sessions[sessions.length - 1].finishedAt : 0;
-    for (const s of local) {
-      // Sessions the server list doesn't have yet (just uploaded, still queued, or no database).
-      if (known.has(s.id) || s.finishedAt! < cutoff) continue;
-      const { correct, total } = sessionScore(s, byId);
-      out.push({ id: s.id, mode: s.mode, title: sessionLabel(s), finishedAt: s.finishedAt!, correct, total });
-    }
-    return out.sort((a, b) => b.finishedAt - a.finishedAt).slice(0, 8);
-  }, [sessions, local, byId]);
+  const rows = useMemo(() => mergeSessions(sessions, local, byId, 8), [sessions, local, byId]);
 
   if (!rows.length) {
     return <p className="text-sm text-bb-muted">Nothing yet. Finish a set or an exam to see it here.</p>;
@@ -100,8 +87,11 @@ function Recent({ recent, byId }: { recent: Promise<RecentData>; byId: Map<strin
               <LocalDate ms={s.finishedAt} />
             </div>
           </div>
-          <div className="text-xl font-bold">
-            {s.correct}/{s.total}
+          <div className="text-right">
+            <div className="text-xl font-bold">
+              {s.correct}/{s.total}
+            </div>
+            {s.estimate && <div className="text-xs font-semibold text-bb-muted">≈ {s.estimate.score}</div>}
           </div>
         </Link>
       ))}

@@ -1,19 +1,15 @@
 import "server-only";
 import type { InStatement, Row } from "@libsql/client";
 import { addAttempts, attemptsForSession, grade, type Attempt, type AttemptInput, type ProgressMap } from "@/lib/attempts";
+import type { SessionSummary } from "@/lib/history";
+import { estimateScore } from "@/lib/score";
+import type { AttemptRow } from "@/lib/stats";
 import { sessionLabel, sessionScore, type ModuleState, type Session } from "@/lib/session";
 import type { Question } from "@/lib/types";
 import { getBankById } from "./bank";
 import { getDb } from "./db";
 
-export type SessionSummary = {
-  id: string;
-  mode: Session["mode"];
-  title: string;
-  finishedAt: number;
-  correct: number;
-  total: number;
-};
+export type { SessionSummary };
 
 // ---------- Input checks (the sync endpoint is reachable by anyone with the URL) ----------
 
@@ -163,21 +159,54 @@ export async function getProgress(): Promise<ProgressMap | null> {
   return addAttempts({}, res.rows.map(toAttempt));
 }
 
-export async function listRecentSessions(limit = 8): Promise<SessionSummary[] | null> {
+export async function listSessions(limit = 1000): Promise<SessionSummary[] | null> {
   const db = await getDb();
   if (!db) return null;
   const res = await db.execute({
-    sql: `SELECT id, mode, title, finished_at, correct, total FROM sessions ORDER BY finished_at DESC LIMIT ?`,
+    sql: `SELECT s.id, s.mode, s.title, s.finished_at, s.correct, s.total,
+            json_extract(s.data, '$.custom') AS custom, json_extract(s.data, '$.route') AS route,
+            COALESCE(a.t, 0) AS time_ms
+          FROM sessions s
+          LEFT JOIN (SELECT session_id, SUM(time_ms) AS t FROM attempts GROUP BY session_id) a ON a.session_id = s.id
+          ORDER BY s.finished_at DESC LIMIT ?`,
     args: [limit],
   });
-  return res.rows.map((r) => ({
-    id: String(r.id),
-    mode: r.mode === "exam" ? "exam" : "practice",
-    title: String(r.title),
-    finishedAt: Number(r.finished_at),
-    correct: Number(r.correct),
-    total: Number(r.total),
-  }));
+  return res.rows.map((r): SessionSummary => {
+    const mode = r.mode === "exam" ? "exam" : "practice";
+    const kind = mode === "practice" ? "practice" : r.custom ? "timed" : "exam";
+    const route = r.route === "harder" || r.route === "easier" ? r.route : undefined;
+    const correct = Number(r.correct);
+    const total = Number(r.total);
+    return {
+      id: String(r.id),
+      mode,
+      kind,
+      title: String(r.title),
+      finishedAt: Number(r.finished_at),
+      correct,
+      total,
+      timeMs: Number(r.time_ms),
+      route,
+      estimate: kind === "exam" ? estimateScore(correct, total, route) : undefined,
+    };
+  });
+}
+
+/** Every attempt in the compact form the stats page uses. */
+export async function getAttemptRows(): Promise<AttemptRow[] | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const res = await db.execute(
+    `SELECT question_id, session_id, correct, time_ms, created_at, mode FROM attempts ORDER BY created_at`,
+  );
+  return res.rows.map((r) => [
+    String(r.question_id),
+    String(r.session_id),
+    Number(r.correct) ? 1 : 0,
+    Number(r.time_ms),
+    Number(r.created_at),
+    r.mode === "exam" ? 1 : 0,
+  ]);
 }
 
 export async function getStoredSession(id: string): Promise<Session | null> {

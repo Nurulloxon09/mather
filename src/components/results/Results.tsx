@@ -9,6 +9,8 @@ import { formatClock } from "../bluebook/TopBar";
 import { LocalDate } from "../LocalDate";
 import { Rich, RichInline } from "../Rich";
 import { tex } from "@/lib/rich";
+import { estimateScore } from "@/lib/score";
+import { PACE_MS } from "@/lib/stats";
 import {
   answerTex,
   correctAnswerTex,
@@ -130,6 +132,19 @@ export function Results({ bank, id, stored }: { bank: Question[]; id: string | n
   const modules = fullExam ? [1, 2].filter((n) => rows.some((r) => r.module === n)) : [1];
   const shown = rows.filter((r) => (filter === "wrong" ? !r.correct : filter === "marked" ? r.marked : true));
   const wrong = rows.filter((r) => !r.correct);
+  const estimate = fullExam ? estimateScore(correct, rows.length, session.route) : null;
+  const answeredRows = rows.filter((r) => r.timeMs > 0);
+  const avgMs = answeredRows.length ? answeredRows.reduce((s, r) => s + r.timeMs, 0) / answeredRows.length : 0;
+  const slow = rows.filter((r) => r.timeMs > PACE_MS).length;
+  // The skill with the most misses here (ties: the lower accuracy) is the one to drill next.
+  const weakest = [...skills].filter((s) => s.c < s.t).sort((a, b) => b.t - b.c - (a.t - a.c) || a.c / a.t - b.c / b.t)[0];
+  const drill = weakest
+    ? `/bank?${new URLSearchParams([
+        ["skill", weakest.s],
+        ["status", "incorrect"],
+        ["status", "unanswered"],
+      ])}`
+    : null;
 
   const practiceMissed = () => {
     const active = getActive("practice");
@@ -153,6 +168,15 @@ export function Results({ bank, id, stored }: { bank: Question[]; id: string | n
             </p>
             <p className="mt-1 font-semibold">Raw score · {pct(correct, rows.length)}% correct</p>
           </div>
+          {estimate && (
+            <div>
+              <p className="text-sm font-semibold text-bb-muted">Estimated SAT Math</p>
+              <p className="text-5xl font-extrabold">{estimate.score}</p>
+              <p className="mt-1 text-sm text-bb-muted">
+                Range {estimate.low}–{estimate.high}
+              </p>
+            </div>
+          )}
           {fullExam &&
             modules.map((n) => {
               const rs = rows.filter((r) => r.module === n);
@@ -171,17 +195,38 @@ export function Results({ bank, id, stored }: { bank: Question[]; id: string | n
           <div>
             <p className="text-sm font-semibold text-bb-muted">Time on questions</p>
             <p className="text-2xl font-bold">{formatClock(totalMs / 1000)}</p>
+            <p className="text-sm text-bb-muted">
+              {formatClock(avgMs / 1000)} each · SAT pace {formatClock(PACE_MS / 1000)}
+              {slow ? ` · ${slow} slower` : ""}
+            </p>
           </div>
-          <div className="ml-auto flex gap-3">
+          <div className="ml-auto flex flex-wrap gap-3">
             {wrong.length > 0 && (
               <button className="bb-btn bb-btn-outline" onClick={practiceMissed}>
                 Practice missed ({wrong.length})
               </button>
             )}
+            {drill && (
+              <Link href={drill} className="bb-btn bb-btn-outline" title={`Questions in ${weakest!.s} you missed or haven't tried`}>
+                Drill most-missed skill
+              </Link>
+            )}
             <Link href="/" className="bb-btn bb-btn-primary">
               Home
             </Link>
           </div>
+          {estimate && (
+            <p className="basis-full text-xs text-bb-muted">
+              The estimate follows typical Bluebook score ranges for this raw score
+              {session.mode === "exam" && session.route ? ` and the ${session.route} Module 2` : ""}. Book questions are often
+              harder than the real test.
+            </p>
+          )}
+          {weakest && (
+            <p className="basis-full text-sm">
+              Most missed here: <strong>{weakest.s}</strong> ({weakest.t - weakest.c} of {weakest.t} wrong).
+            </p>
+          )}
         </section>
 
         <section className="grid gap-6 md:grid-cols-2">
@@ -196,7 +241,7 @@ export function Results({ bank, id, stored }: { bank: Question[]; id: string | n
                       {c}/{t} · {pct(c, t)}%
                     </span>
                   </div>
-                  <div className="h-2.5 overflow-hidden rounded-full bg-bb-bar">
+                  <div className="h-2.5 overflow-hidden rounded-full bg-bb-blue-soft">
                     <div className="h-full rounded-full bg-bb-blue" style={{ width: `${pct(c, t)}%` }} />
                   </div>
                 </div>
@@ -273,7 +318,14 @@ export function Results({ bank, id, stored }: { bank: Question[]; id: string | n
                       <td className="py-3">
                         <span dangerouslySetInnerHTML={{ __html: tex(correctAnswerTex(r.q)) }} />
                       </td>
-                      <td className="py-3 tabular-nums">{formatClock(r.timeMs / 1000)}</td>
+                      <td className="whitespace-nowrap py-3 tabular-nums">
+                        {formatClock(r.timeMs / 1000)}
+                        {r.timeMs > PACE_MS && (
+                          <span className="ml-1.5 rounded bg-[#fff1cc] px-1 text-[10px] font-bold text-[#6b4b00]" title="Slower than SAT pace">
+                            SLOW
+                          </span>
+                        )}
+                      </td>
                       <td className="py-3 pr-6">
                         {r.correct ? (
                           <CheckCircle width={22} height={22} className="text-bb-green" />

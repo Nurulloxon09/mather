@@ -4,11 +4,11 @@ import { AppHeader } from "@/components/AppHeader";
 import { Home, type RecentData } from "@/components/home/Home";
 import { getBank } from "@/server/bank";
 import { dbMode } from "@/server/db";
-import { listRecentSessions, orNull } from "@/server/progress";
+import { listSessions, orNull } from "@/server/progress";
 
 async function loadRecent(): Promise<RecentData> {
   await connection();
-  const { data, error } = await orNull(() => listRecentSessions(8));
+  const { data, error } = await orNull(() => listSessions(8));
   return { sessions: data, mode: dbMode(), error };
 }
 

@@ -3,6 +3,8 @@ import Link from "next/link";
 const NAV = [
   { href: "/", label: "Home", key: "home" },
   { href: "/bank", label: "Question Bank", key: "bank" },
+  { href: "/stats", label: "Stats", key: "stats" },
+  { href: "/history", label: "History", key: "history" },
   { href: "/upload", label: "Upload", key: "upload" },
 ] as const;
 
@@ -20,7 +22,7 @@ export function AppHeader({
         <Link href="/" className="text-xl font-extrabold tracking-tight">
           mather
         </Link>
-        <nav className="flex gap-1 text-[15px] font-semibold">
+        <nav className="flex flex-wrap gap-1 text-[15px] font-semibold">
           {NAV.map((n) => (
             <Link
               key={n.key}
