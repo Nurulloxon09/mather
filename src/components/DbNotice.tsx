@@ -8,8 +8,9 @@ export function DbNotice({ mode, error }: { mode: DbMode; error?: boolean }) {
       <p className="mx-auto max-w-6xl px-6 py-2.5 text-sm">
         {mode === "none" ? (
           <>
-            <strong>No database connected.</strong> Your progress is kept in this browser and uploads
-            automatically once you add one (README → Database).
+            <strong>No database connected.</strong> Progress is kept in this browser for now and uploads
+            automatically once one is added. To add one: in Vercel, open this project → Storage → connect a
+            Turso database (free), then redeploy.
           </>
         ) : (
           <>

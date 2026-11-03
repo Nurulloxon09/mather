@@ -20,15 +20,15 @@ Without it, the app uses Desmos's public demo key, which is fine for personal us
 Every attempt and finished test is saved to a SQLite database (libSQL).
 
 - **Locally** nothing to set up: it's a file at `.data/mather.db`, created on first use.
-- **On Vercel** use a free [Turso](https://turso.tech) database:
-  1. Sign up at turso.tech (GitHub login works) and create a database.
-  2. Copy its URL (`libsql://…`) and create a token for it.
-  3. In Vercel → your project → Settings → Environment Variables, add
-     `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`.
-  4. Redeploy (Deployments → ⋯ → Redeploy). Tables are created automatically.
+- **On Vercel** use a free [Turso](https://turso.tech) database. Either:
+  - **From Vercel (easiest):** your project → Storage → Create Database (or Browse Marketplace) →
+    Turso → free plan → connect it to this project. Vercel adds the settings itself. Then
+    Deployments → ⋯ → Redeploy.
+  - **By hand:** create a database at turso.tech, copy its URL (`libsql://…`) and create a token, then
+    add `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in Settings → Environment Variables and redeploy.
 
-  Connecting Turso from Vercel's Storage tab also works; prefixed variable names such as
-  `STORAGE_TURSO_DATABASE_URL` are picked up.
+  Tables are created automatically. Any variable holding a `libsql://` URL is found, whatever its name,
+  with the token from its sibling variable (`src/server/db-env.ts`).
 
 Until a database is connected, the home page shows a notice and progress stays in the browser.
 Writes always go to a queue in the browser first (`src/lib/outbox.ts`) and are uploaded in the

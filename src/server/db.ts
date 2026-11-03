@@ -2,29 +2,22 @@ import "server-only";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Client } from "@libsql/client";
+import { findDatabase } from "./db-env";
 
 /**
  * Database connection.
  *
  * - `TURSO_DATABASE_URL` (+ `TURSO_AUTH_TOKEN`) set: a hosted Turso/libSQL database.
- *   Names with a prefix (e.g. `STORAGE_TURSO_DATABASE_URL` from a Vercel integration) work too.
+ *   Other names work too, e.g. from Vercel's Storage tab (see db-env.ts).
  * - Not set, running locally: a SQLite file at `.data/mather.db`.
  * - Not set, running on Vercel: no database. The browser keeps progress and uploads it later.
  */
 export type DbMode = "remote" | "local" | "none";
 
-function env(suffix: string) {
-  if (process.env[suffix]) return { key: suffix, value: process.env[suffix]! };
-  const key = Object.keys(process.env).find((k) => k.endsWith(`_${suffix}`) && process.env[k]);
-  return key ? { key, value: process.env[key]! } : undefined;
-}
-
 function config(): { mode: DbMode; url?: string; authToken?: string } {
-  const url = env("TURSO_DATABASE_URL");
-  if (url) {
-    const prefix = url.key.slice(0, -"TURSO_DATABASE_URL".length);
-    const authToken = process.env[`${prefix}TURSO_AUTH_TOKEN`] ?? env("TURSO_AUTH_TOKEN")?.value;
-    return { mode: url.value.startsWith("file:") ? "local" : "remote", url: url.value, authToken };
+  const found = findDatabase(process.env);
+  if (found) {
+    return { mode: found.url.startsWith("file:") ? "local" : "remote", url: found.url, authToken: found.authToken };
   }
   if (process.env.VERCEL) return { mode: "none" };
   const dir = path.join(process.cwd(), ".data");
