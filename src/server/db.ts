@@ -63,6 +63,60 @@ const MIGRATIONS: string[][] = [
     `CREATE INDEX IF NOT EXISTS attempts_question ON attempts (question_id, created_at)`,
     `CREATE INDEX IF NOT EXISTS attempts_created ON attempts (created_at)`,
   ],
+  // Phase 3: uploads, their pages, stored files, and extracted questions.
+  [
+    `CREATE TABLE IF NOT EXISTS uploads (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      source TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      page_count INTEGER NOT NULL,
+      planned INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS upload_pages (
+      upload_id TEXT NOT NULL,
+      page INTEGER NOT NULL,
+      file_id TEXT,
+      width INTEGER,
+      height INTEGER,
+      text TEXT NOT NULL DEFAULT '',
+      extracted_at INTEGER,
+      PRIMARY KEY (upload_id, page)
+    )`,
+    `CREATE TABLE IF NOT EXISTS files (
+      id TEXT PRIMARY KEY,
+      upload_id TEXT,
+      kind TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      data BLOB NOT NULL,
+      created_at INTEGER NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS files_upload ON files (upload_id, kind)`,
+    `CREATE TABLE IF NOT EXISTS answer_keys (
+      upload_id TEXT NOT NULL,
+      section TEXT NOT NULL,
+      number INTEGER NOT NULL,
+      answers TEXT NOT NULL,
+      explanation TEXT NOT NULL,
+      page INTEGER,
+      PRIMARY KEY (upload_id, section, number)
+    )`,
+    `CREATE TABLE IF NOT EXISTS uploaded_questions (
+      id TEXT PRIMARY KEY,
+      upload_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      section TEXT NOT NULL,
+      number INTEGER NOT NULL,
+      data TEXT NOT NULL,
+      meta TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS uq_upload ON uploaded_questions (upload_id, number)`,
+    `CREATE INDEX IF NOT EXISTS uq_status ON uploaded_questions (status)`,
+  ],
 ];
 
 async function migrate(client: Client) {

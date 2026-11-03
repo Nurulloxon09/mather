@@ -70,6 +70,8 @@ export type Question = {
   page?: number;
   /** Known problem with the source question; flagged questions are left out of exams. */
   flag?: string;
+  /** Set for questions that came from an uploaded file (editable in the review screen). */
+  uploadId?: string;
 };
 
 /** Per-question state inside a practice set or exam module. */

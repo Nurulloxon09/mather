@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { connection } from "next/server";
+import { AppHeader } from "@/components/AppHeader";
 import { Home, type RecentData } from "@/components/home/Home";
 import { getBank } from "@/server/bank";
 import { dbMode } from "@/server/db";
@@ -10,7 +12,22 @@ async function loadRecent(): Promise<RecentData> {
   return { sessions: data, mode: dbMode(), error };
 }
 
-export default async function Page() {
-  // Not awaited: the page shell renders right away and recent results stream in.
+export default function Page() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-dvh bg-[#f6f7fb]">
+          <AppHeader active="home" />
+        </div>
+      }
+    >
+      <HomeData />
+    </Suspense>
+  );
+}
+
+async function HomeData() {
+  await connection();
+  // Recent results aren't awaited: the page renders right away and they stream in.
   return <Home bank={await getBank()} recent={loadRecent()} />;
 }

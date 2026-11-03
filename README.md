@@ -38,6 +38,46 @@ the database existed are uploaded the first time you open the app with one conne
 Tables (`src/server/db.ts`):
 - `attempts`: one row per question per test or set: answer, correct, time spent, mode, marked.
 - `sessions`: each finished practice set, timed set or exam, with its full state for the results page.
+- `uploads`, `upload_pages`, `answer_keys`, `uploaded_questions`: uploaded files and the questions read from them.
+- `files`: page images and cropped figures (served by `/api/files/<id>`), so no separate file storage is needed.
+
+## Uploads (Phase 3)
+
+`/upload` turns a prep book into questions:
+
+1. **Upload** a PDF (choose a page range, and include the answer key pages), a Word `.docx` file, or
+   photos of pages. The browser does the heavy lifting: PDF pages are rendered to images with pdf.js,
+   Word files are converted to the question markup (equations become LaTeX, list numbers are written
+   out, tables and pictures are kept), and the results are uploaded page by page.
+2. **Reading**: a few pages at a time (4 pages, overlapping by 1 so questions that cross a page break
+   are seen whole) go to Gemini, which returns each question's number, section, text, choices, answer
+   if printed, explanation if printed, figure locations, and its domain, skill and difficulty, plus any
+   answer-key entries. Answer keys are matched to questions by section and number. Figures are cropped
+   out of the page in the browser. Rate limits are waited out automatically; reading can be paused and
+   continued later.
+3. **Review**: each question is shown next to its original page, with figure boxes highlighted. Edit any
+   field with a live preview, drag on the page to crop a missed figure, ask the AI for a second opinion
+   (it solves the question, which catches wrong answer keys and drafts an explanation), then Publish.
+   Nothing reaches the bank until it's published, and publishing checks that the question is complete:
+   4 choices and an answer letter, valid grid-in answers, LaTeX that renders, no uncropped figures.
+
+Published questions show up in the bank, practice sets and exams like the built-in ones.
+
+### Setup
+
+1. Create a free API key at [Google AI Studio](https://aistudio.google.com/apikey).
+2. In Vercel → Settings → Environment Variables, add `GEMINI_API_KEY`, then redeploy.
+   Locally, put it in `.env.local`.
+
+The default model is `gemini-flash-latest` (set `GEMINI_MODEL` to use another). The upload screen also
+offers `gemini-flash-lite-latest`, which allows many more requests per day on the free tier; switch to it
+if the daily limit runs out mid-book.
+
+### Passcode
+
+Uploads use your API key, so on a public URL you'll want a lock. Set `APP_PASSCODE` (any phrase) in
+Vercel and redeploy: every page and API then asks for it once per browser (`src/proxy.ts`).
+Leave it unset to keep the app open.
 
 ## What's here (Phase 1)
 
@@ -73,7 +113,7 @@ Click a question to see it in full, reveal the answer and explanation, and see e
 
 ## Question data
 
-Questions live in `src/data/` as TypeScript, using a small markup that the review screen will reuse later:
+Built-in questions live in `src/data/` as TypeScript; uploaded ones are stored in the database. Both use the same small markup:
 
 - `$...$` for inline LaTeX and `$$...$$` for display LaTeX (rendered with KaTeX)
 - `\$` for a dollar sign, `**bold**`
@@ -123,5 +163,5 @@ Each correction is explained in the question's explanation.
 
 1. ~~Bluebook exam UI with book questions, both modes~~
 2. ~~Database (SQLite/libSQL locally, Turso when deployed), question bank with filters, custom sets, attempt saving~~
-3. Upload PDF/image/DOCX → extraction (Gemini) → side-by-side review → publish
+3. ~~Upload PDF/image/DOCX → extraction (Gemini) → side-by-side review → publish~~
 4. Full results history and stats page (accuracy by domain/skill, weakest areas)

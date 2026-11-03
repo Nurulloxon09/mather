@@ -3,6 +3,7 @@ import Link from "next/link";
 const NAV = [
   { href: "/", label: "Home", key: "home" },
   { href: "/bank", label: "Question Bank", key: "bank" },
+  { href: "/upload", label: "Upload", key: "upload" },
 ] as const;
 
 /** Header for the pages around the test (home, bank, results). */
