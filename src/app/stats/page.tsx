@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { AppHeader } from "@/components/AppHeader";
+import { AppHeader, PAGE } from "@/components/AppHeader";
 import { DbNotice } from "@/components/DbNotice";
+import { StatsTabs } from "@/components/stats/StatsTabs";
 import { StatsView } from "@/components/stats/StatsView";
 import type { QMeta } from "@/lib/stats";
 import { getBank } from "@/server/bank";
@@ -13,9 +14,16 @@ export const metadata: Metadata = { title: "Stats · Mather" };
 
 export default function Page() {
   return (
-    <div className="min-h-dvh bg-[#f6f7fb]">
+    <div className="min-h-dvh">
       <AppHeader active="stats" />
-      <Suspense fallback={<p className="mx-auto max-w-6xl px-6 py-10 text-bb-muted">Loading stats…</p>}>
+      <Suspense
+        fallback={
+          <main className={`${PAGE} py-6 sm:py-10`}>
+            <StatsTabs active="overview" />
+            <p className="text-bb-muted">Loading stats…</p>
+          </main>
+        }
+      >
         <StatsData />
       </Suspense>
     </div>
@@ -37,7 +45,8 @@ async function StatsData() {
   return (
     <>
       <DbNotice mode={dbMode()} error={rows.error || sessions.error} />
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <main className={`${PAGE} py-6 sm:py-10`}>
+        <StatsTabs active="overview" />
         <StatsView rows={rows.data ?? []} meta={meta} sessions={sessions.data ?? []} bankSize={bankSize} now={now} />
       </main>
     </>

@@ -1,43 +1,42 @@
 import Link from "next/link";
 
 const NAV = [
-  { href: "/", label: "Home", key: "home" },
-  { href: "/bank", label: "Question Bank", key: "bank" },
+  { href: "/bank", label: "Practice", key: "bank" },
   { href: "/stats", label: "Stats", key: "stats" },
-  { href: "/history", label: "History", key: "history" },
   { href: "/upload", label: "Upload", key: "upload" },
 ] as const;
 
-/** Header for the pages around the test (home, bank, results). */
-export function AppHeader({
-  active,
-  children,
-}: {
-  active?: (typeof NAV)[number]["key"];
-  children?: React.ReactNode;
-}) {
+export type NavKey = (typeof NAV)[number]["key"];
+
+/** Shared width for the header and page content, so everything lines up. */
+export const PAGE = "mx-auto w-full max-w-5xl px-5 sm:px-8";
+
+/** The review workspace is a wide three-pane tool. */
+export const WIDE = "mx-auto w-full max-w-[1680px] px-4 sm:px-6";
+
+/** Header for the pages around the test. The wordmark is the way home. */
+export function AppHeader({ active, wide }: { active?: NavKey; wide?: boolean }) {
   return (
-    <header className="border-b border-bb-line bg-white">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3">
-        <Link href="/" className="text-xl font-extrabold tracking-tight">
-          mather
-        </Link>
-        <nav className="flex flex-wrap gap-1 text-[15px] font-semibold">
-          {NAV.map((n) => (
-            <Link
-              key={n.key}
-              href={n.href}
-              aria-current={active === n.key ? "page" : undefined}
-              className={`rounded-full px-3 py-1.5 ${
-                active === n.key ? "bg-bb-blue-soft text-bb-blue" : "text-bb-muted hover:text-bb-ink"
-              }`}
-            >
-              {n.label}
-            </Link>
-          ))}
-        </nav>
-        {children && <div className="ml-auto flex items-center gap-3">{children}</div>}
-      </div>
+    <header className={`${wide ? WIDE : PAGE} flex items-center gap-6 py-5`}>
+      <Link href="/" className="mr-auto text-lg font-extrabold tracking-tight">
+        mather
+      </Link>
+      <nav className="flex gap-5 text-[15px] font-semibold sm:gap-7">
+        {NAV.map((n) => (
+          <Link
+            key={n.key}
+            href={n.href}
+            aria-current={active === n.key ? "page" : undefined}
+            className={
+              active === n.key
+                ? "text-bb-ink underline decoration-2 underline-offset-[10px]"
+                : "text-bb-muted hover:text-bb-ink"
+            }
+          >
+            {n.label}
+          </Link>
+        ))}
+      </nav>
     </header>
   );
 }

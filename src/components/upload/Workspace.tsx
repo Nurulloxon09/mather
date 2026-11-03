@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { WIDE } from "../AppHeader";
 import { DraftEditor } from "./DraftEditor";
 import { PageViewer } from "./PageViewer";
 import { api, ApiError } from "@/lib/client/api";
@@ -316,10 +317,10 @@ export function Workspace({
   const u = state.upload;
 
   return (
-    <div className="mx-auto max-w-[1680px] px-4 py-5 sm:px-6">
+    <div className={`${WIDE} pb-6 pt-2`}>
       <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="min-w-0 flex-1">
-          <Link href="/upload" className="text-sm font-semibold text-bb-blue hover:underline">
+          <Link href="/upload" className="text-sm font-semibold text-bb-link hover:underline">
             ← Uploads
           </Link>
           <h1 className="truncate text-2xl font-extrabold">{u.source}</h1>
@@ -336,7 +337,7 @@ export function Workspace({
       </div>
 
       {(pendingPages > 0 || running || runIssue || skipped.length > 0 || runText) && (
-        <section className="mb-5 rounded-2xl border border-bb-line bg-white p-4">
+        <section className="mb-5 rounded-2xl bg-bb-subtle p-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="font-semibold">
@@ -348,7 +349,7 @@ export function Workspace({
                 </p>
               )}
               {u.pagesReady < u.planned && !running && (
-                <p className="text-sm text-[#8a6100]">
+                <p className="text-sm text-bb-amber-ink">
                   Only {u.pagesReady} of {u.planned} pages finished uploading. To add the rest, upload those pages again as a new file.
                 </p>
               )}
@@ -366,7 +367,7 @@ export function Workspace({
                       // storage blocked
                     }
                   }}
-                  className="rounded-md border border-bb-line bg-white px-2 py-1.5 font-normal"
+                  className="rounded-md border border-bb-line bg-bb-surface px-2 py-1.5 font-normal"
                 >
                   {models.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -396,7 +397,7 @@ export function Workspace({
           {!aiReady && <p className="mt-2 text-sm text-bb-red">Add GEMINI_API_KEY to read pages (README → Uploads).</p>}
           {runIssue && <p className="mt-2 text-sm font-semibold text-bb-red">{runIssue}</p>}
           {skipped.map((s) => (
-            <p key={s.pages.join()} className="mt-1 text-sm text-[#8a6100]">
+            <p key={s.pages.join()} className="mt-1 text-sm text-bb-amber-ink">
               Page {s.pages.join(", ")} couldn&apos;t be read: {s.reason} Add its questions by hand with &quot;Add a question&quot;.
             </p>
           ))}
@@ -406,7 +407,7 @@ export function Workspace({
       {message && (
         <p
           className={`mb-4 rounded-lg px-4 py-2.5 text-sm font-semibold ${
-            message.tone === "error" ? "bg-[#fde8eb] text-bb-red" : "bg-[#e7f5ef] text-bb-green"
+            message.tone === "error" ? "bg-bb-red-soft text-bb-red" : "bg-bb-green-soft text-bb-green"
           }`}
         >
           {message.text}
@@ -416,7 +417,7 @@ export function Workspace({
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[230px_minmax(0,1fr)_minmax(0,1fr)]">
         {/* Question list */}
         <aside className="lg:col-span-2 xl:col-span-1">
-          <div className="rounded-2xl border border-bb-line bg-white xl:sticky xl:top-4">
+          <div className="rounded-2xl border border-bb-hair bg-bb-surface xl:sticky xl:top-4">
             <div className="flex flex-wrap gap-1 border-b border-bb-bar p-2 text-xs font-semibold">
               {(
                 [
@@ -430,7 +431,7 @@ export function Workspace({
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`rounded-full px-2.5 py-1 ${filter === f ? "bg-bb-ink text-white" : "hover:bg-bb-bar"}`}
+                  className={`rounded-full px-2.5 py-1 ${filter === f ? "bg-bb-ink text-bb-bg" : "hover:bg-bb-bar"}`}
                 >
                   {label}
                 </button>
@@ -444,12 +445,12 @@ export function Workspace({
                     <button
                       onClick={() => void open(d)}
                       className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${
-                        d.id === selectedId ? "bg-bb-blue-soft font-bold text-bb-blue" : "hover:bg-bb-bar"
+                        d.id === selectedId ? "bg-bb-blue-soft font-bold text-bb-link" : "hover:bg-bb-bar"
                       }`}
                     >
                       <span
                         className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                          d.status === "published" ? "bg-bb-green" : d.status === "rejected" ? "bg-[#bbb]" : issues ? "bg-[#e08a00]" : "bg-bb-blue"
+                          d.status === "published" ? "bg-bb-green" : d.status === "rejected" ? "bg-bb-faint" : issues ? "bg-[#e08a00]" : "bg-bb-blue"
                         }`}
                         aria-hidden
                       />
@@ -465,7 +466,7 @@ export function Workspace({
               {!listed.length && <li className="px-2 py-3 text-sm text-bb-muted">Nothing here yet.</li>}
             </ul>
             <div className="border-t border-bb-bar p-2">
-              <button className="w-full rounded-md px-2 py-1.5 text-sm font-semibold text-bb-blue hover:bg-bb-bar" onClick={() => void addQuestion()}>
+              <button className="w-full rounded-md px-2 py-1.5 text-sm font-semibold text-bb-link hover:bg-bb-bar" onClick={() => void addQuestion()}>
                 + Add a question
               </button>
             </div>
@@ -516,7 +517,7 @@ export function Workspace({
         {/* Editor */}
         <section className="min-w-0">
           {selected && form ? (
-            <div className="rounded-2xl border border-bb-line bg-white p-5">
+            <div className="rounded-2xl border border-bb-hair bg-bb-surface p-5">
               <div className="mb-4 flex items-center gap-2">
                 <h2 className="flex-1 text-lg font-bold">Question {form.sourceNumber}</h2>
                 <button className="rounded-md border border-bb-line px-2.5 py-1 text-sm font-semibold" onClick={() => step(-1)} aria-label="Previous question">
@@ -550,7 +551,7 @@ export function Workspace({
               />
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-bb-line p-10 text-center text-bb-muted">
+            <div className="rounded-2xl border border-dashed border-bb-hair p-10 text-center text-bb-muted">
               {running || pendingPages ? "Questions appear here as pages are read." : "No questions found. Add one by hand from the list."}
             </div>
           )}

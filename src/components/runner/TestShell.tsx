@@ -50,7 +50,7 @@ export function TestShell({
   const [refOpen, setRefOpen] = useState(false);
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-white">
+    <div className="bb-light flex h-dvh flex-col overflow-hidden bg-white">
       <TopBar
         title={title}
         seconds={seconds}

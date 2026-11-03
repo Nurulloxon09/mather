@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { AppHeader } from "@/components/AppHeader";
+import { AppHeader, PAGE } from "@/components/AppHeader";
 import { Results } from "@/components/results/Results";
 import { getBank } from "@/server/bank";
 import { getStoredSession, orNull } from "@/server/progress";
@@ -27,9 +27,9 @@ async function ResultsData({ searchParams }: Pick<PageProps<"/results">, "search
 
 function Loading() {
   return (
-    <div className="min-h-dvh bg-[#f6f7fb]">
+    <div className="min-h-dvh">
       <AppHeader />
-      <p className="mx-auto max-w-6xl px-6 py-10 text-bb-muted">Loading results…</p>
+      <p className={`${PAGE} py-10 text-bb-muted`}>Loading results…</p>
     </div>
   );
 }

@@ -1,13 +1,15 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AppHeader } from "../AppHeader";
+import { AppHeader, PAGE } from "../AppHeader";
 import { CheckCircle, XCircle } from "../bluebook/icons";
 import { formatClock } from "../bluebook/TopBar";
 import { LocalDate } from "../LocalDate";
 import { Rich, RichInline } from "../Rich";
+import { Segmented } from "../Segmented";
+import { Meter } from "../stats/Charts";
 import { tex } from "@/lib/rich";
 import { estimateScore } from "@/lib/score";
 import { PACE_MS } from "@/lib/stats";
@@ -25,6 +27,7 @@ import {
 } from "@/lib/session";
 import { LETTERS, type Question } from "@/lib/types";
 
+type Filter = "all" | "wrong" | "marked";
 type Row = { q: Question; module: number; number: number; answer?: string; correct: boolean; timeMs: number; marked: boolean };
 
 function rowsFor(session: Session, byId: Map<string, Question>): Row[] {
@@ -46,7 +49,7 @@ function pct(c: number, t: number) {
 function QuestionDetail({ row }: { row: Row }) {
   const { q } = row;
   return (
-    <div className="space-y-5 bg-[#fafbfe] px-6 py-5">
+    <div className="space-y-5 rounded-xl bg-bb-subtle px-4 py-5 sm:px-6">
       <Rich src={q.stem} />
       {q.type === "mcq" && (
         <ol className="space-y-2">
@@ -58,7 +61,7 @@ function QuestionDetail({ row }: { row: Row }) {
               <li
                 key={l}
                 className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${
-                  isAns ? "border-bb-green bg-[#e7f5ef]" : isMine ? "border-bb-red bg-[#fbeaec]" : "border-bb-line bg-white"
+                  isAns ? "border-bb-green bg-bb-green-soft" : isMine ? "border-bb-red bg-bb-red-soft" : "border-bb-hair bg-bb-surface"
                 }`}
               >
                 <span className="bb-letter">{l}</span>
@@ -71,13 +74,13 @@ function QuestionDetail({ row }: { row: Row }) {
         </ol>
       )}
       {q.flag && (
-        <div className="rounded-lg border border-[#e6b800] bg-[#fff8d6] px-4 py-3 text-sm">
+        <div className="rounded-lg bg-bb-amber-soft px-4 py-3 text-sm">
           <strong>Source issue: </strong>
           <RichInline src={q.flag} />
         </div>
       )}
       <div>
-        <h4 className="mb-1 font-bold">Explanation</h4>
+        <h4 className="mb-1 font-semibold">Explanation</h4>
         {q.explanation ? <Rich src={q.explanation} className="!text-[16px]" /> : <p className="text-sm text-bb-muted">No explanation yet.</p>}
       </div>
       <p className="text-xs text-bb-muted">
@@ -94,7 +97,7 @@ export function Results({ bank, id, stored }: { bank: Question[]; id: string | n
   // The database copy, or this browser's copy if it hasn't been saved there yet.
   const [local, setLocal] = useState<Session | null | undefined>(undefined);
   const [open, setOpen] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "wrong" | "marked">("all");
+  const [filterChoice, setFilter] = useState<Filter | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- read from localStorage after mount
@@ -107,7 +110,7 @@ export function Results({ bank, id, stored }: { bank: Question[]; id: string | n
     return (
       <div className="grid min-h-dvh place-items-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Results not found</h1>
+          <h1 className="text-2xl font-semibold">Results not found</h1>
           <Link href="/" className="bb-btn bb-btn-primary mt-6 inline-block">
             Back to home
           </Link>
@@ -130,8 +133,16 @@ export function Results({ bank, id, stored }: { bank: Question[]; id: string | n
     .sort((a, b) => a.c / a.t - b.c / b.t);
   const fullExam = session.mode === "exam" && !session.custom;
   const modules = fullExam ? [1, 2].filter((n) => rows.some((r) => r.module === n)) : [1];
-  const shown = rows.filter((r) => (filter === "wrong" ? !r.correct : filter === "marked" ? r.marked : true));
   const wrong = rows.filter((r) => !r.correct);
+  const marked = rows.filter((r) => r.marked);
+  // Open on the questions to look at again, if there are any.
+  const filter: Filter = filterChoice ?? (wrong.length ? "wrong" : "all");
+  const shown = filter === "wrong" ? wrong : filter === "marked" ? marked : rows;
+  const filters: (readonly [Filter, React.ReactNode])[] = [
+    ["wrong", <>Missed <span className="font-normal opacity-60">{wrong.length}</span></>],
+    ["all", <>All <span className="font-normal opacity-60">{rows.length}</span></>],
+  ];
+  if (marked.length) filters.push(["marked", <>Marked <span className="font-normal opacity-60">{marked.length}</span></>]);
   const estimate = fullExam ? estimateScore(correct, rows.length, session.route) : null;
   const answeredRows = rows.filter((r) => r.timeMs > 0);
   const avgMs = answeredRows.length ? answeredRows.reduce((s, r) => s + r.timeMs, 0) / answeredRows.length : 0;
@@ -154,199 +165,186 @@ export function Results({ bank, id, stored }: { bank: Question[]; id: string | n
   };
 
   return (
-    <div className="min-h-dvh bg-[#f6f7fb]">
+    <div className="min-h-dvh">
       <AppHeader />
-      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
-        <section className="flex flex-wrap items-end gap-8 rounded-2xl border border-bb-line bg-white p-6">
-          <div>
-            <p className="text-sm font-semibold text-bb-muted">
-              {sessionLabel(session)} · <LocalDate ms={session.finishedAt} />
-            </p>
-            <p className="mt-1 text-5xl font-extrabold">
-              {correct}
-              <span className="text-2xl font-bold text-bb-muted">/{rows.length}</span>
-            </p>
-            <p className="mt-1 font-semibold">Raw score · {pct(correct, rows.length)}% correct</p>
-          </div>
-          {estimate && (
+      <main className={`${PAGE} space-y-12 py-6 sm:py-10`}>
+        <section>
+          <p className="text-sm text-bb-muted">
+            {sessionLabel(session)} · <LocalDate ms={session.finishedAt} />
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-x-12 gap-y-4">
             <div>
-              <p className="text-sm font-semibold text-bb-muted">Estimated SAT Math</p>
-              <p className="text-5xl font-extrabold">{estimate.score}</p>
-              <p className="mt-1 text-sm text-bb-muted">
-                Range {estimate.low}–{estimate.high}
+              <p className="text-6xl font-bold leading-none tracking-tight tabular-nums">
+                {correct}
+                <span className="text-3xl font-semibold text-bb-muted">/{rows.length}</span>
               </p>
+              <p className="mt-2 text-sm text-bb-muted">{pct(correct, rows.length)}% correct</p>
             </div>
-          )}
-          {fullExam &&
-            modules.map((n) => {
-              const rs = rows.filter((r) => r.module === n);
-              return (
-                <div key={n}>
-                  <p className="text-sm font-semibold text-bb-muted">
-                    Module {n}
-                    {n === 2 && session.route ? ` (${session.route})` : ""}
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {rs.filter((r) => r.correct).length}/{rs.length}
-                  </p>
-                </div>
-              );
-            })}
-          <div>
-            <p className="text-sm font-semibold text-bb-muted">Time on questions</p>
-            <p className="text-2xl font-bold">{formatClock(totalMs / 1000)}</p>
-            <p className="text-sm text-bb-muted">
-              {formatClock(avgMs / 1000)} each · SAT pace {formatClock(PACE_MS / 1000)}
-              {slow ? ` · ${slow} slower` : ""}
-            </p>
+            {estimate && (
+              <div>
+                <p className="text-6xl font-bold leading-none tracking-tight tabular-nums">{estimate.score}</p>
+                <p className="mt-2 text-sm text-bb-muted">
+                  Estimated SAT Math · {estimate.low}–{estimate.high}
+                </p>
+              </div>
+            )}
           </div>
-          <div className="ml-auto flex flex-wrap gap-3">
+          <p className="mt-5 text-sm text-bb-muted">
+            {fullExam &&
+              modules.map((n) => {
+                const rs = rows.filter((r) => r.module === n);
+                return (
+                  <span key={n}>
+                    Module {n}
+                    {n === 2 && session.route ? ` (${session.route})` : ""}: {rs.filter((r) => r.correct).length}/{rs.length}
+                    {" · "}
+                  </span>
+                );
+              })}
+            {formatClock(totalMs / 1000)} on questions · {formatClock(avgMs / 1000)} each (SAT pace{" "}
+            {formatClock(PACE_MS / 1000)})
+          </p>
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
             {wrong.length > 0 && (
-              <button className="bb-btn bb-btn-outline" onClick={practiceMissed}>
+              <button className="bb-btn bb-btn-primary" onClick={practiceMissed}>
                 Practice missed ({wrong.length})
               </button>
             )}
             {drill && (
-              <Link href={drill} className="bb-btn bb-btn-outline" title={`Questions in ${weakest!.s} you missed or haven't tried`}>
+              <Link
+                href={drill}
+                className="text-sm font-semibold text-bb-muted hover:text-bb-ink"
+                title={`Questions in ${weakest!.s} you missed or haven't tried`}
+              >
                 Drill most-missed skill
               </Link>
             )}
-            <Link href="/" className="bb-btn bb-btn-primary">
+            <Link href="/" className="text-sm font-semibold text-bb-muted hover:text-bb-ink">
               Home
             </Link>
           </div>
+        </section>
+
+        <section>
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <h2 className="flex-1 font-semibold">Questions</h2>
+            <Segmented value={filter} options={filters} onChange={setFilter} label="Show questions" />
+          </div>
+          {shown.length === 0 ? (
+            <p className="border-t border-bb-hair py-6 text-sm text-bb-muted">None.</p>
+          ) : (
+            <ul className="border-b border-bb-hair">
+              {shown.map((r) => {
+                const key = `${r.module}-${r.number}`;
+                return (
+                  <li key={key} className="border-t border-bb-hair">
+                    <button
+                      onClick={() => setOpen(open === key ? null : key)}
+                      aria-expanded={open === key}
+                      className="group flex w-full items-center gap-3 py-3 text-left sm:gap-4"
+                    >
+                      <span className="w-11 shrink-0 font-semibold tabular-nums">
+                        {fullExam ? `M${r.module}·` : ""}
+                        {r.number}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate group-hover:underline">{r.q.skill}</span>
+                        <span className="block text-sm text-bb-muted">
+                          Yours{" "}
+                          {r.answer ? (
+                            <span className="text-bb-ink" dangerouslySetInnerHTML={{ __html: tex(answerTex(r.q, r.answer)) }} />
+                          ) : (
+                            "blank"
+                          )}
+                          {!r.correct && (
+                            <>
+                              {" · "}correct{" "}
+                              <span className="text-bb-ink" dangerouslySetInnerHTML={{ __html: tex(correctAnswerTex(r.q)) }} />
+                            </>
+                          )}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-right text-sm tabular-nums text-bb-muted">
+                        {formatClock(r.timeMs / 1000)}
+                        {r.timeMs > PACE_MS && (
+                          <span className="block text-xs font-semibold text-bb-amber-ink" title="Slower than SAT pace">
+                            slow
+                          </span>
+                        )}
+                      </span>
+                      {r.correct ? (
+                        <CheckCircle width={22} height={22} className="shrink-0 text-bb-green" aria-label="Correct" />
+                      ) : (
+                        <XCircle width={22} height={22} className="shrink-0 text-bb-red" aria-label="Incorrect" />
+                      )}
+                    </button>
+                    {open === key && (
+                      <div className="pb-4">
+                        <QuestionDetail row={r} />
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        <details className="group/more">
+          <summary className="flex cursor-pointer list-none items-center gap-2 font-semibold text-bb-muted hover:text-bb-ink [&::-webkit-details-marker]:hidden">
+            <span className="transition group-open/more:rotate-90">›</span> Breakdown
+          </summary>
+          <div className="mt-6 grid grid-cols-1 gap-12 md:grid-cols-2">
+            <div>
+              <h3 className="mb-3 font-semibold">By domain</h3>
+              <div className="space-y-3">
+                {domains.map(({ d, c, t }) => (
+                  <div key={d}>
+                    <div className="mb-1.5 flex text-sm">
+                      <span className="flex-1">{d}</span>
+                      <span className="tabular-nums text-bb-muted">
+                        {c}/{t} · {pct(c, t)}%
+                      </span>
+                    </div>
+                    <Meter value={t ? c / t : 0} label={`${d} accuracy`} />
+                  </div>
+                ))}
+              </div>
+              {weakest && (
+                <p className="mt-6 text-sm">
+                  Most missed here: <strong>{weakest.s}</strong> ({weakest.t - weakest.c} of {weakest.t} wrong).
+                </p>
+              )}
+              {slow > 0 && (
+                <p className="mt-2 text-sm text-bb-muted">
+                  {slow} question{slow === 1 ? "" : "s"} took longer than SAT pace ({formatClock(PACE_MS / 1000)}).
+                </p>
+              )}
+            </div>
+            <div>
+              <h3 className="mb-3 font-semibold">By skill, weakest first</h3>
+              <table className="w-full text-sm">
+                <tbody>
+                  {skills.map(({ s, c, t }) => (
+                    <tr key={s} className="border-t border-bb-hair first:border-0">
+                      <td className="py-2 pr-3">{s}</td>
+                      <td className="whitespace-nowrap py-2 text-right tabular-nums">
+                        {c}/{t}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
           {estimate && (
-            <p className="basis-full text-xs text-bb-muted">
+            <p className="mt-8 text-xs text-bb-muted">
               The estimate follows typical Bluebook score ranges for this raw score
               {session.mode === "exam" && session.route ? ` and the ${session.route} Module 2` : ""}. Book questions are often
               harder than the real test.
             </p>
           )}
-          {weakest && (
-            <p className="basis-full text-sm">
-              Most missed here: <strong>{weakest.s}</strong> ({weakest.t - weakest.c} of {weakest.t} wrong).
-            </p>
-          )}
-        </section>
-
-        <section className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border border-bb-line bg-white p-6">
-            <h2 className="mb-4 font-bold">Accuracy by domain</h2>
-            <div className="space-y-3">
-              {domains.map(({ d, c, t }) => (
-                <div key={d}>
-                  <div className="mb-1 flex text-sm">
-                    <span className="flex-1 font-semibold">{d}</span>
-                    <span>
-                      {c}/{t} · {pct(c, t)}%
-                    </span>
-                  </div>
-                  <div className="h-2.5 overflow-hidden rounded-full bg-bb-blue-soft">
-                    <div className="h-full rounded-full bg-bb-blue" style={{ width: `${pct(c, t)}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-bb-line bg-white p-6">
-            <h2 className="mb-4 font-bold">By skill (weakest first)</h2>
-            <table className="w-full text-sm">
-              <tbody>
-                {skills.map(({ s, c, t }) => (
-                  <tr key={s} className="border-b border-bb-bar last:border-0">
-                    <td className="py-1.5 pr-3">{s}</td>
-                    <td className="whitespace-nowrap py-1.5 text-right font-semibold">
-                      {c}/{t}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="overflow-hidden rounded-2xl border border-bb-line bg-white">
-          <div className="flex items-center gap-2 border-b border-bb-line px-6 py-4">
-            <h2 className="flex-1 font-bold">Questions</h2>
-            {(["all", "wrong", "marked"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`rounded-full px-3 py-1 text-sm font-semibold ${filter === f ? "bg-bb-ink text-white" : "hover:bg-bb-bar"}`}
-              >
-                {f === "all" ? "All" : f === "wrong" ? "Incorrect" : "Marked"}
-              </button>
-            ))}
-          </div>
-          <table className="w-full text-[15px]">
-            <thead className="bg-bb-bar text-left text-xs uppercase tracking-wide text-bb-muted">
-              <tr>
-                <th className="px-6 py-2">#</th>
-                <th className="py-2">Skill</th>
-                <th className="py-2">Yours</th>
-                <th className="py-2">Correct</th>
-                <th className="py-2">Time</th>
-                <th className="py-2 pr-6" />
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((r) => {
-                const key = `${r.module}-${r.number}`;
-                return (
-                  <Fragment key={key}>
-                    <tr
-                      onClick={() => setOpen(open === key ? null : key)}
-                      className="cursor-pointer border-t border-bb-bar hover:bg-[#f7f8fc]"
-                    >
-                      <td className="whitespace-nowrap px-6 py-3 font-bold">
-                        {fullExam ? `M${r.module}·` : ""}
-                        {r.number}
-                      </td>
-                      <td className="py-3 pr-3">
-                        <div className="text-sm">{r.q.skill}</div>
-                        <div className="text-xs text-bb-muted">
-                          {r.q.domain} · {r.q.difficulty}
-                        </div>
-                      </td>
-                      <td className="py-3">
-                        {r.answer ? (
-                          <span dangerouslySetInnerHTML={{ __html: tex(answerTex(r.q, r.answer)) }} />
-                        ) : (
-                          <span className="text-bb-muted">—</span>
-                        )}
-                      </td>
-                      <td className="py-3">
-                        <span dangerouslySetInnerHTML={{ __html: tex(correctAnswerTex(r.q)) }} />
-                      </td>
-                      <td className="whitespace-nowrap py-3 tabular-nums">
-                        {formatClock(r.timeMs / 1000)}
-                        {r.timeMs > PACE_MS && (
-                          <span className="ml-1.5 rounded bg-[#fff1cc] px-1 text-[10px] font-bold text-[#6b4b00]" title="Slower than SAT pace">
-                            SLOW
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 pr-6">
-                        {r.correct ? (
-                          <CheckCircle width={22} height={22} className="text-bb-green" />
-                        ) : (
-                          <XCircle width={22} height={22} className="text-bb-red" />
-                        )}
-                      </td>
-                    </tr>
-                    {open === key && (
-                      <tr>
-                        <td colSpan={6} className="border-t border-bb-bar p-0">
-                          <QuestionDetail row={r} />
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </section>
+        </details>
       </main>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PAGE } from "../AppHeader";
 import { LocalDate } from "../LocalDate";
 import { api, withRetry } from "@/lib/client/api";
 import { parsePageRanges, type UploadKind, type UploadSummary } from "@/lib/uploads";
@@ -173,16 +174,16 @@ export function UploadHome({
     : "";
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+    <main className={`${PAGE} space-y-12 py-6 sm:py-10`}>
       {!geminiReady && (
-        <div className="rounded-xl border border-[#e6b800] bg-[#fff8d6] px-5 py-4 text-sm">
+        <div className="rounded-lg bg-bb-amber-soft px-4 py-3 text-sm">
           <strong>Add a Gemini API key to read uploads.</strong> Create a free key at Google AI Studio and add it
           to Vercel as <code>GEMINI_API_KEY</code>, then redeploy (README → Uploads). You can still upload now and
           start reading later.
         </div>
       )}
-      <section className="rounded-2xl border border-bb-line bg-white p-6">
-        <h2 className="mb-1 text-lg font-bold">Add questions from a book</h2>
+      <section>
+        <h1 className="mb-1 text-2xl font-bold tracking-tight">Add questions from a book</h1>
         <p className="mb-5 text-sm text-bb-muted">
           Upload a PDF, a Word file, or photos of pages. The AI reads the questions, answers and answer key;
           you check each one next to the original page before it goes into the bank.
@@ -199,8 +200,8 @@ export function UploadHome({
             setDrag(false);
             if (!busy) void choose(Array.from(e.dataTransfer.files));
           }}
-          className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-8 text-center ${
-            drag ? "border-bb-blue bg-bb-blue-soft" : "border-bb-line"
+          className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center ${
+            drag ? "border-bb-blue bg-bb-blue-soft" : "border-bb-hair"
           }`}
         >
           <input
@@ -229,7 +230,7 @@ export function UploadHome({
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
                 placeholder="e.g. Math Hard Book"
-                className="mt-1 w-full rounded-md border border-bb-line px-3 py-2 font-normal outline-none focus:border-bb-blue"
+                className="mt-1 w-full rounded-lg border border-bb-hair bg-bb-surface px-3 py-2 font-normal outline-none focus:border-bb-blue"
               />
               <span className="mt-1 block text-xs font-normal text-bb-muted">Shown with each question and used as the Source filter.</span>
             </label>
@@ -240,7 +241,7 @@ export function UploadHome({
                   value={range}
                   onChange={(e) => setRange(e.target.value)}
                   placeholder={`All ${picked.pages} pages`}
-                  className="mt-1 w-full rounded-md border border-bb-line px-3 py-2 font-normal outline-none focus:border-bb-blue"
+                  className="mt-1 w-full rounded-lg border border-bb-hair bg-bb-surface px-3 py-2 font-normal outline-none focus:border-bb-blue"
                 />
                 <span className={`mt-1 block text-xs font-normal ${pageList ? "text-bb-muted" : "text-bb-red"}`}>
                   {pageList
@@ -262,7 +263,7 @@ export function UploadHome({
                 {progress.done}/{progress.total}
               </span>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-bb-bar">
+            <div className="h-1.5 overflow-hidden rounded-full bg-bb-bar">
               <div
                 className="h-full rounded-full bg-bb-blue transition-all"
                 style={{ width: `${(progress.done / Math.max(1, progress.total)) * 100}%` }}
@@ -284,17 +285,17 @@ export function UploadHome({
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-bold">Uploads</h2>
+        <h2 className="mb-2 font-semibold">Uploads</h2>
         {!uploads?.length ? (
-          <p className="text-sm text-bb-muted">{uploads ? "Nothing uploaded yet." : "Connect a database to upload files."}</p>
+          <p className="border-t border-bb-hair py-4 text-sm text-bb-muted">{uploads ? "Nothing uploaded yet." : "Connect a database to upload files."}</p>
         ) : (
-          <ul className="divide-y divide-bb-bar overflow-hidden rounded-2xl border border-bb-line bg-white">
+          <ul className="divide-y divide-bb-hair border-y border-bb-hair">
             {uploads.map((u) => {
               const s = status(u);
               return (
-                <li key={u.id} className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-4">
-                  <div className="min-w-0 flex-1">
-                    <Link href={`/upload/${u.id}`} className="font-semibold hover:text-bb-blue hover:underline">
+                <li key={u.id} className="flex flex-wrap items-center gap-x-5 gap-y-2 py-4">
+                  <div className="min-w-0 flex-1 basis-full sm:basis-0">
+                    <Link href={`/upload/${u.id}`} className="font-semibold hover:underline">
                       {u.source}
                     </Link>
                     <p className="truncate text-sm text-bb-muted">
@@ -304,12 +305,12 @@ export function UploadHome({
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                       s.tone === "warn"
-                        ? "bg-[#fff1cc] text-[#8a6100]"
+                        ? "bg-bb-amber-soft text-bb-amber-ink"
                         : s.tone === "busy"
-                          ? "bg-bb-blue-soft text-bb-blue"
+                          ? "bg-bb-blue-soft text-bb-link"
                           : s.tone === "todo"
-                            ? "bg-[#fde8eb] text-bb-red"
-                            : "bg-[#e7f5ef] text-bb-green"
+                            ? "bg-bb-red-soft text-bb-red"
+                            : "bg-bb-green-soft text-bb-green"
                     }`}
                   >
                     {s.label}
@@ -318,7 +319,7 @@ export function UploadHome({
                   <Link href={`/upload/${u.id}`} className="bb-btn bb-btn-primary !px-4 !py-1.5 text-sm">
                     {u.drafts || u.pagesExtracted < u.pagesReady ? "Open" : "View"}
                   </Link>
-                  <button className="text-sm font-semibold text-bb-red hover:underline" onClick={() => void remove(u)}>
+                  <button className="text-sm text-bb-muted hover:text-bb-red" onClick={() => void remove(u)}>
                     Delete
                   </button>
                 </li>

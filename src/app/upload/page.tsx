@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { AppHeader } from "@/components/AppHeader";
+import { AppHeader, PAGE } from "@/components/AppHeader";
 import { DbNotice } from "@/components/DbNotice";
 import { UploadHome } from "@/components/upload/UploadHome";
 import { dbMode } from "@/server/db";
@@ -13,9 +13,9 @@ export const metadata: Metadata = { title: "Upload · Mather" };
 
 export default function Page() {
   return (
-    <div className="min-h-dvh bg-[#f6f7fb]">
+    <div className="min-h-dvh">
       <AppHeader active="upload" />
-      <Suspense fallback={<p className="mx-auto max-w-6xl px-6 py-10 text-bb-muted">Loading uploads…</p>}>
+      <Suspense fallback={<p className={`${PAGE} py-10 text-bb-muted`}>Loading uploads…</p>}>
         <UploadData />
       </Suspense>
     </div>

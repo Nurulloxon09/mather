@@ -15,6 +15,7 @@ import {
   moduleScore,
   newModule,
   saveSession,
+  saveSettings,
   timedSeconds,
   type ExamSession,
   type ModuleState,
@@ -34,6 +35,8 @@ export function ExamRunner({ bank }: { bank: Question[] }) {
   const [loadingNext, setLoadingNext] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [strike, setStrike] = useState(false);
+  // A test that hasn't started yet opens on a start screen; the clock waits for "Begin".
+  const [begun, setBegun] = useState(false);
   const latest = useRef<ExamSession | null>(null);
 
   useEffect(() => {
@@ -86,8 +89,10 @@ export function ExamRunner({ bank }: { bank: Question[] }) {
     }
   }, [pool, byId, router]);
 
+  const intro = !!session && !session.finishedAt && !begun && notStarted(session);
+
   // One-second clock: counts the module down and charges time to the visible question.
-  const running = !!session && !session.finishedAt && !loadingNext;
+  const running = !!session && !session.finishedAt && !loadingNext && !intro;
   useEffect(() => {
     if (!running) return;
     const t = setInterval(() => {
@@ -120,10 +125,25 @@ export function ExamRunner({ bank }: { bank: Question[] }) {
     );
   if (session.finishedAt) return <p className="p-10 text-center font-semibold">Opening results…</p>;
 
+  if (intro) {
+    return (
+      <StartScreen
+        session={session}
+        name={name}
+        onName={(v) => {
+          setName(v);
+          saveSettings({ ...getSettings(), name: v });
+        }}
+        onBegin={() => setBegun(true)}
+        onBack={() => router.push(session.custom ? "/bank" : "/")}
+      />
+    );
+  }
+
   const moduleNo = session.current + 1;
   if (loadingNext) {
     return (
-      <div className="grid min-h-dvh place-items-center">
+      <div className="bb-light grid min-h-dvh place-items-center">
         <div className="text-center">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-bb-blue-soft border-t-bb-blue" />
           <p className="mt-5 text-lg font-bold">Loading Module {moduleNo}…</p>
@@ -232,5 +252,72 @@ export function ExamRunner({ bank }: { bank: Question[] }) {
         </Modal>
       )}
     </TestShell>
+  );
+}
+
+/** True until the first second of Module 1 has been spent. */
+function notStarted(s: ExamSession) {
+  return s.current === 0 && Object.values(s.modules[0].items).every((it) => !it?.timeMs && !it?.answer && !it?.marked);
+}
+
+function StartScreen({
+  session,
+  name,
+  onName,
+  onBegin,
+  onBack,
+}: {
+  session: ExamSession;
+  name: string;
+  onName: (name: string) => void;
+  onBegin: () => void;
+  onBack: () => void;
+}) {
+  const m = session.modules[0];
+  return (
+    <div className="bb-light grid min-h-dvh place-items-center px-5 py-10">
+      <form
+        className="w-full max-w-md"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onBegin();
+        }}
+      >
+        <p className="text-sm font-semibold text-bb-muted">{session.custom ? "Timed set" : "Full exam"}</p>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight">{session.custom ?? "SAT Math"}</h1>
+        <ul className="mt-6 space-y-1.5 text-[15px]">
+          {session.custom ? (
+            <li>
+              {m.questionIds.length} questions · {Math.round(m.secondsLeft / 60)} minutes
+            </li>
+          ) : (
+            <>
+              <li>2 modules · 22 questions each · 35 minutes each</li>
+              {session.adaptive && <li>Module 2 is harder or easier depending on Module 1</li>}
+            </>
+          )}
+          <li>No feedback until the end</li>
+          <li>Submits itself when time runs out</li>
+        </ul>
+        <label className="mt-8 block">
+          <span className="text-sm font-semibold">Your name</span>
+          <input
+            value={name}
+            onChange={(e) => onName(e.target.value)}
+            placeholder="Shown at the bottom of the test"
+            autoComplete="name"
+            className="mt-1.5 w-full rounded-lg border border-bb-line px-3 py-2.5 outline-none focus:border-bb-blue"
+          />
+        </label>
+        <div className="mt-8 flex items-center gap-6">
+          <button type="submit" className="bb-btn bb-btn-primary">
+            Begin
+          </button>
+          <button type="button" className="text-sm text-bb-muted hover:text-bb-ink" onClick={onBack}>
+            Not now
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

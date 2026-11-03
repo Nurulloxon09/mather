@@ -15,6 +15,13 @@ npm run build      # production build
 Optional: set `NEXT_PUBLIC_DESMOS_API_KEY` in `.env.local` to use your own Desmos key.
 Without it, the app uses Desmos's public demo key, which is fine for personal use.
 
+## Look
+
+Minimal on purpose: white pages, no boxes, black and white with blue only for the main button and
+the charts (green and red only for right and wrong). The menu is **Practice · Stats · Upload**; the
+wordmark goes home. Pages follow the device's light or dark setting (`src/app/globals.css` holds both
+sets of colors). The test screen is the exception: it always looks like Bluebook, in light mode.
+
 ## Database
 
 Every attempt and finished test is saved to a SQLite database (libSQL).
@@ -86,7 +93,7 @@ Leave it unset to keep the app open.
   - Desmos graphing calculator and reference sheet in draggable, resizable panels.
   - Question header: number box, Mark for Review, "ABC" answer elimination.
   - Multiple-choice answer boxes, and a grid-in answer box with live Answer Preview. The grid-in entry rules are in the Directions dropdown.
-  - Bottom bar: your name, a "Question X of Y" navigator, Back/Next.
+  - Bottom bar: your name (entered on the start screen before an exam or timed set), a "Question X of Y" navigator, Back/Next.
   - A "Check Your Work" page at the end of each module.
 - **Practice mode** (`/practice`): click Check to see Correct/Incorrect, the correct answer, the explanation and your time on the question.
 - **Exam mode** (`/exam`): 2 modules × 22 questions × 35 minutes. No feedback during the test. Optional adaptive Module 2 (harder or easier based on Module 1). Auto-submits at 0:00. Results page with raw score, accuracy by domain and skill, and every question with its explanation.
@@ -98,9 +105,10 @@ Leave it unset to keep the app open.
 
 ## Question bank (Phase 2)
 
-`/bank` lists every question with filters for status (unanswered, incorrect, correct, marked for
-review), domain, skill, difficulty, type and source. Filters combine (OR inside a group, AND across
-groups) and live in the URL, so `/bank?status=incorrect&domain=Advanced+Math&difficulty=Hard` is a
+`/bank` (**Practice** in the menu) lists every question, with one row of filter menus: status
+(unanswered, incorrect, correct, marked for review), topic (domain and skill), type, and difficulty and
+source once there's more than one of them. Filters combine (OR inside a group, AND across groups) and
+live in the URL, so `/bank?status=incorrect&domain=Advanced+Math&difficulty=Hard` is a
 link to "hard Advanced Math questions I got wrong".
 
 From any filter, start a set of N questions:
@@ -109,22 +117,24 @@ From any filter, start a set of N questions:
   you submit, then a results page.
 
 Status uses your most recent attempt: "Incorrect" means you got it wrong the last time you answered it.
-Click a question to see it in full, reveal the answer and explanation, and see every attempt.
+Click a question to see its skill, the full question, the answer and explanation, and every attempt.
 
 ## Progress (Phase 4)
 
 - **Stats** (`/stats`), scoped by one period filter (all time, last 30 days, last 7 days):
   - estimated SAT Math score from the latest full exam, with its range and the change since the exam before
-  - questions answered, accuracy, time per question against SAT pace (35 min / 22 questions ≈ 1:35),
-    days practiced and streak, questions not tried yet
-  - questions answered and accuracy per day or week, and the score estimate per exam (each chart has
-    a "Show as table" view)
-  - weakest skills (at least 3 answers each), each with a "Practice these" link to the bank filtered to
-    that skill's missed and unanswered questions; accuracy by domain, every skill, difficulty, practice vs
-    tests; and the slowest questions
-- **History** (`/history`): every finished exam, timed set and practice set, filterable, linking to results.
-- **Results** pages add the score estimate for full exams, average time against SAT pace with slow
-  questions marked, and a link to drill the skill missed most.
+  - questions answered, accuracy, and time per question against SAT pace (35 min / 22 questions ≈ 1:35)
+  - one chart with a switch: accuracy or questions answered per day or week, or the score estimate per
+    exam (with a "Show as table" view)
+  - weakest skills (at least 3 answers each), each with a "Practice" link to the bank filtered to that
+    skill's missed and unanswered questions
+  - under "More detail": days practiced and streak, questions not tried yet, accuracy by domain, every
+    skill, difficulty, practice vs tests, and the slowest questions
+- **History** (the second tab under Stats, `/history`): every finished exam, timed set and practice set,
+  filterable, linking to results.
+- **Results** pages lead with the score (and the estimate for full exams), then the questions you missed;
+  the breakdown by domain and skill is folded below. Slow questions are marked, and there are links to
+  practice the missed ones or drill the skill missed most.
 
 **Score estimate** (`src/lib/score.ts`): College Board doesn't publish a raw-to-scaled table for the
 adaptive test, so the estimate follows typical Bluebook practice-test ranges, scaled to 44 questions.

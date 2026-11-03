@@ -1,20 +1,87 @@
 @import "tailwindcss";
 
-:root {
+/*
+ * Color tokens. The app follows the system light/dark setting; the test screen
+ * (anything inside .bb-light) always stays light, like Bluebook.
+ */
+:root,
+.bb-light {
+  color-scheme: light;
+  --bb-bg: #ffffff;
+  --bb-surface: #ffffff;
+  --bb-subtle: #f6f6f7;
+  --bb-bar: #f0f0f0;
+  --bb-hair: #e8e8e8;
+  --bb-line: #c6c6c6;
+  --bb-ink: #1e1e1e;
+  --bb-muted: #5f6368;
+  --bb-faint: #a5a5a5;
   --bb-blue: #324dc7;
   --bb-blue-dark: #263b9e;
   --bb-blue-soft: #e8ecfa;
-  --bb-ink: #1e1e1e;
-  --bb-muted: #5f6368;
-  --bb-line: #c6c6c6;
-  --bb-bar: #f0f0f0;
+  --bb-link: #324dc7;
   --bb-chrome: #f5f7fc;
   --bb-yellow: #fedb00;
   --bb-red: #c13145;
+  --bb-red-soft: #fbeaec;
   --bb-green: #12805c;
+  --bb-green-soft: #e7f5ef;
+  --bb-amber: #e6b800;
+  --bb-amber-soft: #fff6d6;
+  --bb-amber-ink: #7a5600;
+  --bb-th: #f4f4f4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bb-bg: #141414;
+    --bb-surface: #1c1c1e;
+    --bb-subtle: #1f1f22;
+    --bb-bar: #2a2a2d;
+    --bb-hair: #2a2a2d;
+    --bb-line: #48484c;
+    --bb-ink: #ececec;
+    --bb-muted: #a1a1a6;
+    --bb-faint: #5c5c62;
+    --bb-blue: #4c66e0;
+    --bb-blue-dark: #5b74e8;
+    --bb-blue-soft: #252b47;
+    --bb-link: #8ea2ff;
+    --bb-red: #f07a86;
+    --bb-red-soft: #3a1f24;
+    --bb-green: #3fbf8a;
+    --bb-green-soft: #17322a;
+    --bb-amber: #e0b341;
+    --bb-amber-soft: #352c14;
+    --bb-amber-ink: #f0c75e;
+    --bb-th: #242426;
+  }
+  /* Figures are drawn on white paper. */
+  .rich-img {
+    background: #fff;
+    border-radius: 6px;
+    padding: 6px;
+  }
+  .bb-light .rich-img {
+    background: none;
+    border-radius: 0;
+    padding: 0;
+  }
+}
+
+.bb-light {
+  background: var(--bb-bg);
+  color: var(--bb-ink);
 }
 
 @theme inline {
+  --color-bb-bg: var(--bb-bg);
+  --color-bb-surface: var(--bb-surface);
+  --color-bb-subtle: var(--bb-subtle);
+  --color-bb-hair: var(--bb-hair);
+  --color-bb-faint: var(--bb-faint);
+  --color-bb-link: var(--bb-link);
   --color-bb-blue: var(--bb-blue);
   --color-bb-blue-dark: var(--bb-blue-dark);
   --color-bb-blue-soft: var(--bb-blue-soft);
@@ -25,14 +92,19 @@
   --color-bb-chrome: var(--bb-chrome);
   --color-bb-yellow: var(--bb-yellow);
   --color-bb-red: var(--bb-red);
+  --color-bb-red-soft: var(--bb-red-soft);
   --color-bb-green: var(--bb-green);
+  --color-bb-green-soft: var(--bb-green-soft);
+  --color-bb-amber: var(--bb-amber);
+  --color-bb-amber-soft: var(--bb-amber-soft);
+  --color-bb-amber-ink: var(--bb-amber-ink);
   --font-sans: var(--font-ui), system-ui, sans-serif;
   --font-serif: var(--font-content), Georgia, serif;
 }
 
 html,
 body {
-  background: #fff;
+  background: var(--bb-bg);
   color: var(--bb-ink);
 }
 
@@ -107,13 +179,13 @@ body {
 }
 .rich-table th,
 .rich-table td {
-  border: 1px solid #1e1e1e;
+  border: 1px solid var(--bb-ink);
   padding: 6px 16px;
   text-align: center;
 }
 .rich-table th {
   font-weight: 700;
-  background: #f4f4f4;
+  background: var(--bb-th);
 }
 .katex {
   font-size: 1.08em;
@@ -121,12 +193,12 @@ body {
 
 /* ---------- Answer choices ---------- */
 .bb-choice {
-  border: 1.5px solid #1e1e1e;
+  border: 1.5px solid var(--bb-ink);
   border-radius: 8px;
   transition: box-shadow 80ms;
 }
 .bb-choice:hover:not([data-disabled="true"]):not([data-selected="true"]) {
-  box-shadow: 0 0 0 1px #1e1e1e;
+  box-shadow: 0 0 0 1px var(--bb-ink);
 }
 .bb-choice[data-selected="true"] {
   border-color: var(--bb-blue);
@@ -144,7 +216,7 @@ body {
   width: 28px;
   height: 28px;
   flex: 0 0 28px;
-  border: 1.5px solid #1e1e1e;
+  border: 1.5px solid var(--bb-ink);
   border-radius: 999px;
   display: grid;
   place-items: center;
@@ -166,7 +238,7 @@ body {
   left: -6px;
   right: -6px;
   top: 50%;
-  border-top: 2px solid #1e1e1e;
+  border-top: 2px solid var(--bb-ink);
   pointer-events: none;
 }
 
@@ -186,15 +258,23 @@ body {
   background: var(--bb-blue-dark);
 }
 .bb-btn-primary:disabled {
-  background: #9aa6d8;
+  background: var(--bb-blue);
+  opacity: 0.45;
   cursor: not-allowed;
 }
 .bb-btn-outline {
-  border: 1.5px solid #1e1e1e;
-  background: #fff;
+  border: 1.5px solid var(--bb-ink);
+  background: var(--bb-surface);
 }
 .bb-btn-outline:hover {
-  background: #f2f2f2;
+  background: var(--bb-subtle);
+}
+/* Quiet button: no border until hovered. */
+.bb-btn-ghost {
+  background: transparent;
+}
+.bb-btn-ghost:hover {
+  background: var(--bb-subtle);
 }
 .bb-btn-yellow {
   background: var(--bb-yellow);

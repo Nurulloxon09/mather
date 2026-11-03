@@ -16,8 +16,8 @@ export default function Page() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-dvh bg-[#f6f7fb]">
-          <AppHeader active="home" />
+        <div className="min-h-dvh">
+          <AppHeader />
         </div>
       }
     >

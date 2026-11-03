@@ -1,11 +1,12 @@
 import type { DbMode } from "@/server/db";
+import { PAGE } from "./AppHeader";
 
-/** Banner shown when progress can't reach the database. */
+/** Note shown when progress can't reach the database. */
 export function DbNotice({ mode, error }: { mode: DbMode; error?: boolean }) {
   if (mode !== "none" && !error) return null;
   return (
-    <div className="border-b border-[#e6b800] bg-[#fff8d6]">
-      <p className="mx-auto max-w-6xl px-6 py-2.5 text-sm">
+    <div className={PAGE}>
+      <p className="rounded-lg bg-bb-amber-soft px-4 py-2.5 text-sm">
         {mode === "none" ? (
           <>
             <strong>No database connected.</strong> Progress is kept in this browser for now and uploads

@@ -35,7 +35,7 @@ function Area({
   );
 }
 
-const select = "w-full rounded-md border border-bb-line bg-white px-2 py-1.5 text-sm outline-none focus:border-bb-blue";
+const select = "w-full rounded-md border border-bb-line bg-bb-surface px-2 py-1.5 text-sm outline-none focus:border-bb-blue";
 
 const splitAnswers = (s: string) =>
   s
@@ -45,7 +45,7 @@ const splitAnswers = (s: string) =>
 
 function Preview({ q }: { q: Question }) {
   return (
-    <div className="space-y-4 rounded-xl border border-bb-line bg-white p-5">
+    <div className="space-y-4 rounded-xl border border-bb-hair bg-bb-surface p-5">
       <Rich src={q.stem || "(No question text yet)"} />
       {q.type === "mcq" ? (
         <div className="space-y-2.5">
@@ -53,7 +53,7 @@ function Preview({ q }: { q: Question }) {
             <div
               key={l}
               className={`flex items-center gap-3 rounded-lg border-[1.5px] px-3 py-2 ${
-                q.answer === l ? "border-bb-green bg-[#e7f5ef]" : "border-[#1e1e1e]"
+                q.answer === l ? "border-bb-green bg-bb-green-soft" : "border-bb-ink"
               }`}
             >
               <span className="bb-letter">{l}</span>
@@ -141,15 +141,15 @@ export function DraftEditor({
         <span
           className={`rounded-full px-2.5 py-1 text-xs font-bold ${
             draft.status === "published"
-              ? "bg-[#e7f5ef] text-bb-green"
+              ? "bg-bb-green-soft text-bb-green"
               : draft.status === "rejected"
                 ? "bg-bb-bar text-bb-muted"
-                : "bg-bb-blue-soft text-bb-blue"
+                : "bg-bb-blue-soft text-bb-link"
           }`}
         >
           {draft.status === "published" ? "Published" : draft.status === "rejected" ? "Rejected" : "Draft"}
         </span>
-        {dirty && <span className="text-xs font-semibold text-[#8a6100]">Unsaved changes</span>}
+        {dirty && <span className="text-xs font-semibold text-bb-amber-ink">Unsaved changes</span>}
         <div className="ml-auto flex flex-wrap gap-2">
           {draft.status === "rejected" ? (
             <button className="bb-btn bb-btn-outline !py-1.5 text-sm" disabled={busy} onClick={() => onStatus("draft")}>
@@ -163,7 +163,7 @@ export function DraftEditor({
               {draft.status === "draft" ? (
                 <>
                   <button
-                    className="bb-btn !py-1.5 text-sm font-semibold text-bb-red hover:bg-[#fde8eb]"
+                    className="bb-btn !py-1.5 text-sm font-semibold text-bb-red hover:bg-bb-red-soft"
                     disabled={busy}
                     onClick={() => onStatus("rejected")}
                   >
@@ -191,14 +191,14 @@ export function DraftEditor({
       {(problems.length > 0 || notes.length > 0) && (
         <ul className="space-y-1.5 text-sm">
           {problems.map((p) => (
-            <li key={p} className="rounded-md bg-[#fde8eb] px-3 py-1.5 text-bb-red">
+            <li key={p} className="rounded-md bg-bb-red-soft px-3 py-1.5 text-bb-red">
               {p}
             </li>
           ))}
           {notes.map((n) => (
             <li
               key={n.text}
-              className={`rounded-md px-3 py-1.5 ${n.tone === "warn" ? "bg-[#fff1cc] text-[#6b4b00]" : "bg-bb-bar text-bb-muted"}`}
+              className={`rounded-md px-3 py-1.5 ${n.tone === "warn" ? "bg-bb-amber-soft text-bb-amber-ink" : "bg-bb-bar text-bb-muted"}`}
             >
               {n.text}
             </li>
@@ -246,7 +246,7 @@ export function DraftEditor({
                   : { type: t, gridAnswers: form.gridAnswers ?? [], answer: undefined },
               )
             }
-            className={`flex-1 rounded-full px-3 py-1.5 ${form.type === t ? "bg-bb-ink text-white" : "hover:bg-bb-bar"}`}
+            className={`flex-1 rounded-full px-3 py-1.5 ${form.type === t ? "bg-bb-ink text-bb-bg" : "hover:bg-bb-bar"}`}
           >
             {t === "mcq" ? "Multiple choice" : "Grid-in"}
           </button>
@@ -350,7 +350,7 @@ export function DraftEditor({
         </label>
       </div>
 
-      <div className="rounded-xl border border-bb-line bg-[#fafbfe] p-4">
+      <div className="rounded-xl bg-bb-subtle p-4">
         <div className="flex flex-wrap items-center gap-3">
           <p className="flex-1 text-sm">
             <strong>Second opinion.</strong> Ask the AI to solve it. Useful for checking the answer key and

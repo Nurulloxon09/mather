@@ -28,7 +28,7 @@ export function PageViewer({
 
   if (!page.fileId) {
     return page.text ? (
-      <div className="rounded-lg border border-bb-line bg-white p-5">
+      <div className="rounded-lg border border-bb-line bg-bb-surface p-5">
         <Rich src={page.text} className="!text-[15px]" />
       </div>
     ) : (
@@ -54,7 +54,7 @@ export function PageViewer({
   return (
     <div
       ref={wrap}
-      className={`relative select-none overflow-hidden rounded-lg border border-bb-line bg-white ${selecting ? "cursor-crosshair" : ""}`}
+      className={`relative select-none overflow-hidden rounded-lg border border-bb-line bg-bb-surface ${selecting ? "cursor-crosshair" : ""}`}
       onPointerDown={(e) => {
         if (!selecting) return;
         e.currentTarget.setPointerCapture(e.pointerId);

@@ -36,7 +36,7 @@ export function UnlockForm() {
         value={code}
         onChange={(e) => setCode(e.target.value)}
         aria-label="Passcode"
-        className="w-full rounded-lg border border-bb-line px-3 py-2.5 outline-none focus:border-bb-blue"
+        className="w-full rounded-lg border border-bb-line bg-bb-surface px-3 py-2.5 outline-none focus:border-bb-blue"
       />
       {error && <p className="text-sm font-semibold text-bb-red">{error}</p>}
       <button className="bb-btn bb-btn-primary w-full" disabled={busy || !code}>

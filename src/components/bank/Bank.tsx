@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AppHeader } from "../AppHeader";
+import { AppHeader, PAGE as WIDTH } from "../AppHeader";
 import { BookmarkIcon, CheckCircle, XCircle } from "../bluebook/icons";
 import { formatClock } from "../bluebook/TopBar";
 import { LocalDate } from "../LocalDate";
 import { Rich, RichInline } from "../Rich";
+import { Segmented } from "../Segmented";
 import { hasStatus, type ProgressMap, type QuestionProgress, type Status } from "@/lib/attempts";
 import { parseBlocks, tex } from "@/lib/rich";
 import { shuffle } from "@/lib/select";
@@ -92,42 +93,80 @@ function setTitle(f: Filters) {
 
 // ---------- Small pieces ----------
 
-function Chip({
-  on,
-  label,
-  count,
-  onClick,
-}: {
-  on: boolean;
-  label: string;
-  count: number;
-  onClick: () => void;
-}) {
-  const empty = count === 0 && !on;
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={on}
-      disabled={empty}
-      className={`rounded-full border px-3 py-1 text-[13px] font-semibold transition ${
-        on
-          ? "border-bb-blue bg-bb-blue text-white"
-          : empty
-            ? "cursor-default border-bb-bar bg-white text-[#a5a5a5]"
-            : "border-bb-line bg-white hover:border-bb-ink"
-      }`}
-    >
-      {label}
-      <span className={on ? "text-white/80" : "text-bb-muted"}> {count}</span>
-    </button>
-  );
-}
+type Option = { value: string; label: string; count: number; on: boolean; strong?: boolean; indent?: boolean };
 
-function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+/** A filter button that opens a list of checkable options with counts. */
+function FilterMenu({
+  label,
+  options,
+  onToggle,
+  onClear,
+}: {
+  label: string;
+  options: Option[];
+  onToggle: (value: string) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const picked = options.filter((o) => o.on);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+
   return (
-    <div className="border-b border-bb-bar py-4 first:pt-0 last:border-0 last:pb-0">
-      <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-bb-muted">{title}</h3>
-      {children}
+    <div ref={ref} className="sm:relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${
+          picked.length ? "bg-bb-ink text-bb-bg" : "bg-bb-subtle hover:bg-bb-bar"
+        }`}
+      >
+        <span className="max-w-[14rem] truncate">
+          {picked.length === 1 ? picked[0].label : picked.length ? `${label} · ${picked.length}` : label}
+        </span>
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className={`transition ${open ? "rotate-180" : ""}`}>
+          <path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-[min(70vh,28rem)] overflow-y-auto rounded-xl border border-bb-hair bg-bb-surface p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] sm:right-auto sm:w-80">
+          {options.map((o) => (
+            <label
+              key={o.value}
+              className={`flex cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-sm leading-snug hover:bg-bb-subtle ${
+                o.indent ? "pl-8" : ""
+              } ${!o.count && !o.on ? "text-bb-faint" : ""}`}
+            >
+              <input
+                type="checkbox"
+                checked={o.on}
+                onChange={() => onToggle(o.value)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--bb-ink)]"
+              />
+              <span className={`flex-1 ${o.strong ? "font-semibold" : ""}`}>{o.label}</span>
+              <span className="tabular-nums text-bb-muted">{o.count}</span>
+            </label>
+          ))}
+          {picked.length > 0 && (
+            <button onClick={onClear} className="mt-1 w-full rounded-lg px-2.5 py-2 text-left text-sm text-bb-muted hover:bg-bb-subtle hover:text-bb-ink">
+              Clear
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -137,7 +176,7 @@ export function StatusIcon({ p, size = 22 }: { p?: QuestionProgress; size?: numb
     return (
       <span
         title="Not answered yet"
-        className="inline-block rounded-full border-[1.5px] border-dashed border-[#9a9a9a]"
+        className="inline-block rounded-full border-[1.5px] border-dashed border-bb-faint"
         style={{ width: size - 2, height: size - 2 }}
       />
     );
@@ -174,7 +213,10 @@ function Snippet({ stem }: { stem: string }) {
 function Detail({ q, p, onPractice }: { q: Question; p?: QuestionProgress; onPractice: () => void }) {
   const [reveal, setReveal] = useState(false);
   return (
-    <div className="space-y-5 border-t border-bb-bar bg-[#fafbfe] px-5 py-5 sm:px-6">
+    <div className="mb-4 space-y-5 rounded-xl bg-bb-subtle px-4 py-5 sm:px-6">
+      <p className="text-sm text-bb-muted">
+        {q.domain} · {q.skill} · {TYPE_LABEL[q.type]} · {q.difficulty}
+      </p>
       <Rich src={q.stem} />
       {q.type === "mcq" ? (
         <ol className="space-y-2">
@@ -185,7 +227,7 @@ function Detail({ q, p, onPractice }: { q: Question; p?: QuestionProgress; onPra
               <li
                 key={l}
                 className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${
-                  good ? "border-bb-green bg-[#e7f5ef]" : "border-bb-line bg-white"
+                  good ? "border-bb-green bg-bb-green-soft" : "border-bb-hair bg-bb-surface"
                 }`}
               >
                 <span className="bb-letter">{l}</span>
@@ -200,18 +242,18 @@ function Detail({ q, p, onPractice }: { q: Question; p?: QuestionProgress; onPra
         <p className="text-sm text-bb-muted">Grid-in: you type the answer.</p>
       )}
       {q.flag && (
-        <div className="rounded-lg border border-[#e6b800] bg-[#fff8d6] px-4 py-3 text-sm">
+        <div className="rounded-lg bg-bb-amber-soft px-4 py-3 text-sm">
           <strong>Source issue: </strong>
           <RichInline src={q.flag} />
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button className="bb-btn bb-btn-outline !py-1.5 text-sm" onClick={() => setReveal((v) => !v)}>
-          {reveal ? "Hide answer" : "Show answer and explanation"}
-        </button>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <button className="bb-btn bb-btn-primary !py-1.5 text-sm" onClick={onPractice}>
           Practice this question
+        </button>
+        <button className="text-sm font-semibold text-bb-muted hover:text-bb-ink" onClick={() => setReveal((v) => !v)}>
+          {reveal ? "Hide answer" : "Show answer and explanation"}
         </button>
         <span className="ml-auto text-xs text-bb-muted">
           {q.source} #{q.sourceNumber}
@@ -220,7 +262,7 @@ function Detail({ q, p, onPractice }: { q: Question; p?: QuestionProgress; onPra
       </div>
 
       {reveal && (
-        <div className="space-y-3 rounded-xl border border-bb-line bg-white p-4">
+        <div className="space-y-3 border-l-2 border-bb-hair pl-4">
           <p className="text-[15px]">
             <span className="font-semibold">Correct answer: </span>
             <span dangerouslySetInnerHTML={{ __html: tex(correctAnswerTex(q)) }} />
@@ -234,7 +276,7 @@ function Detail({ q, p, onPractice }: { q: Question; p?: QuestionProgress; onPra
       )}
 
       <div>
-        <h4 className="mb-2 text-sm font-bold">
+        <h4 className="mb-2 text-sm font-semibold">
           Your attempts{p ? ` · ${p.nCorrect}/${p.n} correct` : ""}
         </h4>
         {!p ? (
@@ -243,7 +285,7 @@ function Detail({ q, p, onPractice }: { q: Question; p?: QuestionProgress; onPra
           <table className="w-full max-w-xl text-sm">
             <tbody>
               {p.history.map((a) => (
-                <tr key={a.id} className="border-t border-bb-bar first:border-0">
+                <tr key={a.id} className="border-t border-bb-hair first:border-0">
                   <td className="py-1.5 pr-3 text-bb-muted">
                     <LocalDate ms={a.createdAt} />
                   </td>
@@ -299,7 +341,6 @@ export function Bank({
   const filters = useMemo(() => readFilters(new URLSearchParams(params.toString())), [params]);
 
   const [open, setOpen] = useState<string | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [limit, setLimit] = useState(PAGE);
   const [mode, setMode] = useState<"practice" | "timed">("practice");
   const [order, setOrder] = useState<"random" | "book">("random");
@@ -332,11 +373,9 @@ export function Bank({
     writeFilters({ status: [], domain: [], skill: [], difficulty: [], type: [], source: [] });
     setLimit(PAGE);
   };
-  const activeCount = GROUPS.reduce((n, g) => n + filters[g].length, 0);
-  const anyFilter = activeCount > 0;
+  const anyFilter = GROUPS.some((g) => filters[g].length > 0);
 
   const domains = DOMAINS.filter((d) => bank.some((q) => q.domain === d));
-  const skillDomains = filters.domain.length ? domains.filter((d) => filters.domain.includes(d)) : domains;
   const difficulties = DIFFICULTIES.filter((d) => bank.some((q) => q.difficulty === d));
   const sources = [...new Set(bank.map((q) => q.source))];
 
@@ -363,257 +402,171 @@ export function Bank({
     );
   };
 
+  const menu = (g: Group, values: { value: string; label: string }[]): Option[] =>
+    values.map((v) => ({ ...v, count: facet(g, v.value), on: (filters[g] as string[]).includes(v.value) }));
+  const clearGroup = (...gs: Group[]) => {
+    const next = { ...filters };
+    for (const g of gs) (next[g] as string[]) = [];
+    writeFilters(next);
+    setLimit(PAGE);
+  };
+  // Topics: each domain, then its skills. Picking a skill narrows within its domain.
+  const topicOptions: Option[] = domains.flatMap((d) => [
+    { value: `d:${d}`, label: d, count: facet("domain", d), on: filters.domain.includes(d), strong: true },
+    ...SKILLS[d]
+      .filter((sk) => bank.some((q) => q.skill === sk))
+      .map((sk) => ({ value: `s:${sk}`, label: sk, count: facet("skill", sk), on: filters.skill.includes(sk), indent: true })),
+  ]);
+
   return (
-    <div className="min-h-dvh bg-[#f6f7fb]">
+    <div className="min-h-dvh">
       <AppHeader active="bank" />
       {notice}
-      <div className="mx-auto max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:grid lg:grid-cols-[290px_minmax(0,1fr)]">
-        <aside className="mb-4 lg:mb-0">
-          {/* On small screens the filters fold away behind a button. */}
-          <button
-            onClick={() => setFiltersOpen((v) => !v)}
-            aria-expanded={filtersOpen}
-            className="flex w-full items-center rounded-2xl border border-bb-line bg-white px-5 py-3 font-bold lg:hidden"
-          >
-            <span className="flex-1 text-left">
-              Filters{anyFilter && <span className="font-semibold text-bb-blue"> · {activeCount} on</span>}
-            </span>
-            <span className="text-sm font-semibold text-bb-muted">{filtersOpen ? "Hide" : "Show"}</span>
-          </button>
-          <div
-            className={`mt-3 rounded-2xl border border-bb-line bg-white p-5 lg:sticky lg:top-4 lg:mt-0 lg:block lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto ${
-              filtersOpen ? "" : "hidden"
-            }`}
-          >
-            <div className="mb-4 flex items-center">
-              <h2 className="flex-1 font-bold">Filters</h2>
-              {anyFilter && (
-                <button onClick={clear} className="text-sm font-semibold text-bb-blue hover:underline">
-                  Clear all
-                </button>
-              )}
-            </div>
-            <FilterSection title="Status">
-              <div className="flex flex-wrap gap-1.5">
-                {STATUS_OPTIONS.map((o) => (
-                  <Chip
-                    key={o.value}
-                    label={o.label}
-                    on={filters.status.includes(o.value)}
-                    count={facet("status", o.value)}
-                    onClick={() => update("status", o.value)}
-                  />
-                ))}
-              </div>
-            </FilterSection>
-            <FilterSection title="Domain">
-              <div className="flex flex-wrap gap-1.5">
-                {domains.map((d) => (
-                  <Chip
-                    key={d}
-                    label={d}
-                    on={filters.domain.includes(d)}
-                    count={facet("domain", d)}
-                    onClick={() => update("domain", d)}
-                  />
-                ))}
-              </div>
-            </FilterSection>
-            <FilterSection title="Skill">
-              <div className="space-y-3">
-                {skillDomains.map((d) => (
-                  <div key={d}>
-                    {skillDomains.length > 1 && <p className="mb-1 text-xs font-semibold text-bb-muted">{d}</p>}
-                    <ul className="space-y-0.5">
-                      {SKILLS[d]
-                        .filter((s) => bank.some((q) => q.skill === s))
-                        .map((s) => {
-                          const on = filters.skill.includes(s);
-                          const c = facet("skill", s);
-                          return (
-                            <li key={s}>
-                              <label
-                                className={`flex cursor-pointer items-start gap-2 rounded px-1 py-1 text-[13px] leading-snug hover:bg-bb-bar ${
-                                  !c && !on ? "text-[#a5a5a5]" : ""
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={on}
-                                  onChange={() => update("skill", s)}
-                                  className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-[var(--bb-blue)]"
-                                />
-                                <span className="flex-1">{s}</span>
-                                <span className="text-bb-muted">{c}</span>
-                              </label>
-                            </li>
-                          );
-                        })}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </FilterSection>
-            <FilterSection title="Difficulty">
-              <div className="flex flex-wrap gap-1.5">
-                {difficulties.map((d) => (
-                  <Chip
-                    key={d}
-                    label={d}
-                    on={filters.difficulty.includes(d)}
-                    count={facet("difficulty", d)}
-                    onClick={() => update("difficulty", d)}
-                  />
-                ))}
-              </div>
-            </FilterSection>
-            <FilterSection title="Type">
-              <div className="flex flex-wrap gap-1.5">
-                {(["mcq", "spr"] as const).map((t) => (
-                  <Chip
-                    key={t}
-                    label={TYPE_LABEL[t]}
-                    on={filters.type.includes(t)}
-                    count={facet("type", t)}
-                    onClick={() => update("type", t)}
-                  />
-                ))}
-              </div>
-            </FilterSection>
-            <FilterSection title="Source">
-              <div className="flex flex-wrap gap-1.5">
-                {sources.map((s) => (
-                  <Chip
-                    key={s}
-                    label={s}
-                    on={filters.source.includes(s)}
-                    count={facet("source", s)}
-                    onClick={() => update("source", s)}
-                  />
-                ))}
-              </div>
-            </FilterSection>
-          </div>
-        </aside>
+      <main className={`${WIDTH} py-6 sm:py-10`}>
+        {/* Filters: one row of menus. Groups with a single value (all "Hard", one book) are left out. */}
+        <div className="relative flex flex-wrap items-center gap-2">
+          <FilterMenu
+            label="Status"
+            options={menu("status", STATUS_OPTIONS)}
+            onToggle={(v) => update("status", v)}
+            onClear={() => clearGroup("status")}
+          />
+          <FilterMenu
+            label="Topic"
+            options={topicOptions}
+            onToggle={(v) => update(v.startsWith("d:") ? "domain" : "skill", v.slice(2))}
+            onClear={() => clearGroup("domain", "skill")}
+          />
+          {difficulties.length > 1 && (
+            <FilterMenu
+              label="Difficulty"
+              options={menu("difficulty", difficulties.map((d) => ({ value: d, label: d })))}
+              onToggle={(v) => update("difficulty", v)}
+              onClear={() => clearGroup("difficulty")}
+            />
+          )}
+          <FilterMenu
+            label="Type"
+            options={menu("type", (["mcq", "spr"] as const).map((t) => ({ value: t, label: TYPE_LABEL[t] })))}
+            onToggle={(v) => update("type", v)}
+            onClear={() => clearGroup("type")}
+          />
+          {sources.length > 1 && (
+            <FilterMenu
+              label="Source"
+              options={menu("source", sources.map((x) => ({ value: x, label: x })))}
+              onToggle={(v) => update("source", v)}
+              onClear={() => clearGroup("source")}
+            />
+          )}
+          {anyFilter && (
+            <button onClick={clear} className="px-2 text-sm text-bb-muted hover:text-bb-ink">
+              Clear all
+            </button>
+          )}
+        </div>
 
-        <section className="min-w-0 space-y-4">
-          <div className="rounded-2xl border border-bb-line bg-white p-4 sm:p-5">
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-              <div className="mr-auto">
-                <p className="text-2xl font-extrabold leading-none">
-                  {shown.length}
-                  <span className="ml-1.5 text-base font-semibold text-bb-muted">
-                    {shown.length === 1 ? "question" : "questions"}
-                  </span>
-                </p>
-                <p className="mt-1 text-sm text-bb-muted">{title}</p>
-              </div>
-              <div className="flex rounded-full border border-bb-line p-0.5 text-sm font-semibold" role="radiogroup">
-                {(["practice", "timed"] as const).map((m) => (
-                  <button
-                    key={m}
-                    role="radio"
-                    aria-checked={mode === m}
-                    onClick={() => setMode(m)}
-                    className={`rounded-full px-3.5 py-1.5 ${mode === m ? "bg-bb-ink text-white" : "hover:bg-bb-bar"}`}
-                  >
-                    {m === "practice" ? "Practice" : "Timed"}
-                  </button>
-                ))}
-              </div>
-              <label className="flex items-center gap-2 text-sm font-semibold">
-                Questions
-                <input
-                  type="number"
-                  min={1}
-                  max={pool.length || 1}
-                  value={count}
-                  onChange={(e) => setCount(Number(e.target.value))}
-                  className="w-16 rounded-md border border-bb-line px-2 py-1.5"
-                />
-              </label>
-              <label className="flex items-center gap-2 text-sm font-semibold">
-                Order
-                <select
-                  value={order}
-                  onChange={(e) => setOrder(e.target.value as "random" | "book")}
-                  className="rounded-md border border-bb-line bg-white px-2 py-1.5"
-                >
-                  <option value="random">Random</option>
-                  <option value="book">Book order</option>
-                </select>
-              </label>
-              <button className="bb-btn bb-btn-primary" disabled={!pool.length} onClick={startSet}>
-                {mode === "timed" ? `Start timed set · ${n}` : `Start practice · ${n}`}
-              </button>
-            </div>
-            <p className="mt-3 text-sm text-bb-muted">
-              {mode === "practice"
-                ? "Check each answer as you go and see the explanation right away."
-                : `${timedSeconds(n) / 60} minutes, no feedback until you submit, like a real module.`}
-              {mode === "timed" && pool.length < shown.length && ` Flagged questions are left out.`}
+        {/* Start a set from whatever is shown. */}
+        <div className="mt-8 flex flex-wrap items-end gap-x-6 gap-y-4">
+          <div className="mr-auto">
+            <p className="text-3xl font-bold tabular-nums">
+              {shown.length}
+              <span className="ml-2 text-base font-normal text-bb-muted">{shown.length === 1 ? "question" : "questions"}</span>
             </p>
+            <p className="mt-1 text-sm text-bb-muted">{title}</p>
           </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <Segmented
+              value={mode}
+              options={[
+                ["practice", "Practice"],
+                ["timed", "Timed"],
+              ]}
+              onChange={setMode}
+              label="Set type"
+            />
+            <label className="flex items-center gap-2 text-sm text-bb-muted">
+              <input
+                type="number"
+                min={1}
+                max={pool.length || 1}
+                value={count}
+                onChange={(e) => setCount(Number(e.target.value))}
+                aria-label="Questions"
+                className="w-14 rounded-lg border border-bb-hair bg-bb-surface px-2 py-1.5 text-bb-ink"
+              />
+              questions
+            </label>
+            <select
+              value={order}
+              onChange={(e) => setOrder(e.target.value as "random" | "book")}
+              aria-label="Order"
+              className="rounded-lg border border-bb-hair bg-bb-surface px-2 py-1.5 text-sm"
+            >
+              <option value="random">Random order</option>
+              <option value="book">Book order</option>
+            </select>
+            <button className="bb-btn bb-btn-primary" disabled={!pool.length} onClick={startSet}>
+              {mode === "timed" ? `Start timed set · ${n}` : `Start practice · ${n}`}
+            </button>
+          </div>
+        </div>
+        <p className="mt-2 text-sm text-bb-muted">
+          {mode === "practice"
+            ? "Check each answer as you go and see the explanation right away."
+            : `${timedSeconds(n) / 60} minutes, no feedback until you submit, like a real module.`}
+          {mode === "timed" && pool.length < shown.length && ` Flagged questions are left out.`}
+        </p>
 
-          <div className="overflow-hidden rounded-2xl border border-bb-line bg-white">
-            {shown.length === 0 ? (
-              <div className="px-6 py-14 text-center">
-                <p className="font-semibold">No questions match these filters.</p>
-                <button onClick={clear} className="mt-2 text-sm font-semibold text-bb-blue hover:underline">
-                  Clear all filters
-                </button>
-              </div>
-            ) : (
-              <ul>
-                {shown.slice(0, limit).map((q) => {
-                  const p = progress[q.id];
-                  const isOpen = open === q.id;
-                  return (
-                    <li key={q.id} className="border-t border-bb-bar first:border-0">
-                      <button
-                        onClick={() => setOpen(isOpen ? null : q.id)}
-                        aria-expanded={isOpen}
-                        className="flex w-full items-start gap-4 px-4 py-3.5 text-left hover:bg-[#f7f8fc] sm:px-5"
-                      >
-                        <span className="mt-0.5 grid h-7 min-w-7 place-items-center rounded-sm bg-bb-ink px-1.5 text-sm font-bold text-white">
-                          {q.sourceNumber}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="mb-1 truncate text-xs font-semibold text-bb-muted">
-                            {q.domain} · {q.skill}
-                          </p>
-                          <Snippet stem={q.stem} />
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2 pt-0.5">
-                          <span className="hidden rounded-full bg-bb-bar px-2 py-0.5 text-xs font-semibold sm:inline">
-                            {q.type === "mcq" ? "MC" : "Grid-in"}
-                          </span>
-                          <span className="hidden rounded-full bg-bb-bar px-2 py-0.5 text-xs font-semibold sm:inline">
-                            {q.difficulty}
-                          </span>
-                          {p?.last.marked && <BookmarkIcon filled width={18} height={18} className="text-bb-red" />}
-                          <StatusIcon p={p} />
-                        </div>
-                      </button>
-                      {isOpen && (
-                        <Detail q={q} p={p} onPractice={() => start([q.id], "practice", `Question ${q.sourceNumber}`)} />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            {shown.length > limit && (
-              <button
-                onClick={() => setLimit((l) => l + PAGE)}
-                className="w-full border-t border-bb-line py-3 text-sm font-semibold text-bb-blue hover:bg-[#f7f8fc]"
-              >
-                Show more ({shown.length - limit} left)
+        <div className="mt-6">
+          {shown.length === 0 ? (
+            <div className="border-t border-bb-hair py-14 text-center">
+              <p className="font-semibold">No questions match these filters.</p>
+              <button onClick={clear} className="mt-2 text-sm text-bb-muted hover:text-bb-ink">
+                Clear all filters
               </button>
-            )}
-          </div>
-        </section>
-      </div>
+            </div>
+          ) : (
+            <ul className="border-b border-bb-hair">
+              {shown.slice(0, limit).map((q) => {
+                const p = progress[q.id];
+                const isOpen = open === q.id;
+                return (
+                  <li key={q.id} className="border-t border-bb-hair">
+                    <button
+                      onClick={() => setOpen(isOpen ? null : q.id)}
+                      aria-expanded={isOpen}
+                      className="group flex w-full items-start gap-4 py-4 text-left"
+                    >
+                      <span className="w-8 shrink-0 pt-0.5 text-right font-semibold tabular-nums text-bb-muted group-hover:text-bb-ink">
+                        {q.sourceNumber}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <Snippet stem={q.stem} />
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 pt-0.5">
+                        {p?.last.marked && <BookmarkIcon filled width={18} height={18} className="text-bb-red" />}
+                        <StatusIcon p={p} />
+                      </div>
+                    </button>
+                    {isOpen && (
+                      <Detail q={q} p={p} onPractice={() => start([q.id], "practice", `Question ${q.sourceNumber}`)} />
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {shown.length > limit && (
+            <button
+              onClick={() => setLimit((l) => l + PAGE)}
+              className="mt-2 w-full py-3 text-sm font-semibold text-bb-muted hover:text-bb-ink"
+            >
+              Show more ({shown.length - limit} left)
+            </button>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

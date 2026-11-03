@@ -41,7 +41,7 @@ function ResultModal({
   const ok = isCorrect(q, answer);
   return (
     <Modal onClose={onClose} width={680}>
-      <div className={`flex items-center gap-3 px-6 py-4 ${ok ? "bg-[#e7f5ef]" : "bg-[#fbeaec]"}`}>
+      <div className={`flex items-center gap-3 px-6 py-4 ${ok ? "bg-bb-green-soft" : "bg-bb-red-soft"}`}>
         {ok ? (
           <CheckCircle width={34} height={34} className="text-bb-green" />
         ) : (

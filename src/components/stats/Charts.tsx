@@ -9,10 +9,10 @@ import { useEffect, useRef, useState } from "react";
 const C = {
   series: "var(--bb-blue)",
   seriesHover: "var(--bb-blue-dark)",
-  grid: "#ebebeb",
-  axis: "#c6c6c6",
-  muted: "#6b6b6b",
-  surface: "#ffffff",
+  grid: "var(--bb-hair)",
+  axis: "var(--bb-line)",
+  muted: "var(--bb-muted)",
+  surface: "var(--bb-bg)",
 };
 
 export type Datum = { label: string; value: number | null; tip: string };
@@ -42,7 +42,7 @@ function Tooltip({ x, y, width, value, label }: { x: number; y: number; width: n
   const left = Math.max(0, Math.min(width - w, x - w / 2));
   return (
     <div
-      className="pointer-events-none absolute z-10 rounded-lg border border-bb-line bg-white px-3 py-2 text-sm shadow-[0_4px_14px_rgba(0,0,0,0.12)]"
+      className="pointer-events-none absolute z-10 rounded-lg border border-bb-hair bg-bb-surface px-3 py-2 text-sm shadow-[0_4px_14px_rgba(0,0,0,0.12)]"
       style={{ left, top: Math.max(0, y - 58), width: w }}
       role="status"
     >
@@ -277,10 +277,10 @@ export function LineChart({
 export function ChartTable({ head, rows }: { head: [string, string]; rows: [string, string][] }) {
   return (
     <details className="mt-2 text-sm">
-      <summary className="cursor-pointer select-none font-semibold text-bb-blue">Show as table</summary>
-      <div className="mt-2 max-h-64 overflow-auto rounded-lg border border-bb-bar">
+      <summary className="cursor-pointer select-none text-bb-muted hover:text-bb-ink">Show as table</summary>
+      <div className="mt-2 max-h-64 overflow-auto rounded-lg border border-bb-hair">
         <table className="w-full">
-          <thead className="sticky top-0 bg-bb-bar text-left text-xs uppercase tracking-wide text-bb-muted">
+          <thead className="sticky top-0 bg-bb-subtle text-left text-xs text-bb-muted">
             <tr>
               <th className="px-3 py-1.5">{head[0]}</th>
               <th className="px-3 py-1.5 text-right">{head[1]}</th>
@@ -288,7 +288,7 @@ export function ChartTable({ head, rows }: { head: [string, string]; rows: [stri
           </thead>
           <tbody>
             {rows.map(([a, b], i) => (
-              <tr key={i} className="border-t border-bb-bar">
+              <tr key={i} className="border-t border-bb-hair">
                 <td className="px-3 py-1.5">{a}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{b}</td>
               </tr>
@@ -304,7 +304,7 @@ export function ChartTable({ head, rows }: { head: [string, string]; rows: [stri
 export function Meter({ value, label }: { value: number; label: string }) {
   return (
     <div
-      className="h-2 overflow-hidden rounded-full bg-bb-blue-soft"
+      className="h-1.5 overflow-hidden rounded-full bg-bb-blue-soft"
       role="meter"
       aria-valuemin={0}
       aria-valuemax={100}
