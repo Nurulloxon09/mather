@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx scripts/test-grid.ts && tsx scripts/test-progress.ts && tsx scripts/test-stats.ts && tsx scripts/test-db-env.ts && tsx scripts/validate-data.ts"
+    "test": "tsx scripts/test-grid.ts && tsx scripts/test-progress.ts && tsx scripts/test-stats.ts && tsx scripts/test-db-env.ts && tsx scripts/test-numbers.ts && tsx scripts/validate-data.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

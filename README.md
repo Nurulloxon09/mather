@@ -116,6 +116,11 @@ From any filter, start a set of N questions:
 - **Timed**: one module with Bluebook timing (35 min per 22 questions, rounded up), no feedback until
   you submit, then a results page.
 
+**By number:** type question numbers in the `#` box, like `10-20`, `34`, or `1-5, 12`, to practice just
+those, in book order. Numbers restart in each chapter, so pick a Topic (Algebra or Advanced Math) to
+choose one; otherwise the list shows both, under chapter headings. The numbers go in the URL too
+(`/bank?domain=Algebra&num=10-20`).
+
 Status uses your most recent attempt: "Incorrect" means you got it wrong the last time you answered it.
 Click a question to see its skill, the full question, the answer and explanation, and every attempt.
 

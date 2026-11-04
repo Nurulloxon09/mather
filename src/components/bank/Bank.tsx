@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppHeader, PAGE as WIDTH } from "../AppHeader";
 import { BookmarkIcon, CheckCircle, XCircle } from "../bluebook/icons";
@@ -9,6 +9,7 @@ import { LocalDate } from "../LocalDate";
 import { Rich, RichInline } from "../Rich";
 import { Segmented } from "../Segmented";
 import { hasStatus, type ProgressMap, type QuestionProgress, type Status } from "@/lib/attempts";
+import { formatRanges, inRanges, parseNumberRanges } from "@/lib/numbers";
 import { parseBlocks, tex } from "@/lib/rich";
 import { shuffle } from "@/lib/select";
 import {
@@ -33,9 +34,12 @@ type Filters = {
   difficulty: Difficulty[];
   type: Question["type"][];
   source: string[];
+  /** Question numbers, e.g. "10-20, 34" (at most one value). */
+  num: string[];
 };
 type Group = keyof Filters;
-const GROUPS: Group[] = ["status", "domain", "skill", "difficulty", "type", "source"];
+const GROUPS: Group[] = ["status", "domain", "skill", "difficulty", "type", "source", "num"];
+const NO_FILTERS: Filters = { status: [], domain: [], skill: [], difficulty: [], type: [], source: [], num: [] };
 
 const STATUS_OPTIONS: { value: Status; label: string }[] = [
   { value: "unanswered", label: "Unanswered" },
@@ -73,6 +77,8 @@ function valueMatches(g: Group, v: string, q: Question, progress: ProgressMap) {
       return q.type === v;
     case "source":
       return q.source === v;
+    case "num":
+      return inRanges(q.sourceNumber, parseNumberRanges(v) ?? []);
   }
 }
 
@@ -88,6 +94,7 @@ function setTitle(f: Filters) {
   else if (f.domain.length || f.skill.length) parts.push("Mixed topics");
   if (f.difficulty.length === 1) parts.push(f.difficulty[0]);
   if (f.status.length === 1) parts.push(STATUS_OPTIONS.find((o) => o.value === f.status[0])!.label);
+  if (f.num.length) parts.push(`#${f.num[0]}`);
   return parts.join(" · ") || "Mixed Math";
 }
 
@@ -343,8 +350,10 @@ export function Bank({
   const [open, setOpen] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [mode, setMode] = useState<"practice" | "timed">("practice");
-  const [order, setOrder] = useState<"random" | "book">("random");
+  // Chosen numbers default to book order, including when they come from a link.
+  const [order, setOrder] = useState<"random" | "book">(filters.num.length ? "book" : "random");
   const [count, setCount] = useState(10);
+  const [numText, setNumText] = useState(filters.num[0] ?? "");
 
   const sorted = useMemo(
     () =>
@@ -370,8 +379,20 @@ export function Bank({
     setOpen(null);
   };
   const clear = () => {
-    writeFilters({ status: [], domain: [], skill: [], difficulty: [], type: [], source: [] });
+    writeFilters(NO_FILTERS);
+    setNumText("");
     setLimit(PAGE);
+  };
+  // Question numbers: applied once the text reads as numbers; a chosen run is practiced whole, in book order.
+  const numBad = parseNumberRanges(numText) === null;
+  const setNumbers = (text: string) => {
+    setNumText(text);
+    const ranges = parseNumberRanges(text);
+    if (ranges === null) return;
+    writeFilters({ ...filters, num: ranges.length ? [formatRanges(ranges)] : [] });
+    if (ranges.length && !filters.num.length) setOrder("book");
+    setLimit(PAGE);
+    setOpen(null);
   };
   const anyFilter = GROUPS.some((g) => filters[g].length > 0);
 
@@ -380,8 +401,12 @@ export function Bank({
   const sources = [...new Set(bank.map((q) => q.source))];
 
   const pool = mode === "timed" ? shown.filter((q) => !q.flag) : shown;
-  const n = Math.max(1, Math.min(count || 1, pool.length));
+  const byNumber = filters.num.length > 0;
+  const n = byNumber ? pool.length : Math.max(1, Math.min(count || 1, pool.length));
   const title = setTitle(filters);
+  // Numbers restart in each chapter (and book), so the list is headed by chapter when it spans several.
+  const chapter = (q: Question) => (sources.length > 1 ? `${q.source} · ${q.domain}` : q.domain);
+  const chapters = [...new Set(shown.map(chapter))];
 
   const start = (ids: string[], kind: "practice" | "timed", name: string) => {
     const existing = getActive(kind === "timed" ? "exam" : "practice");
@@ -459,12 +484,28 @@ export function Bank({
               onClear={() => clearGroup("source")}
             />
           )}
+          <label
+            className={`flex items-center gap-1 rounded-full py-1.5 pl-3.5 pr-3 text-sm ${
+              byNumber && !numBad ? "bg-bb-ink text-bb-bg" : "bg-bb-subtle"
+            } ${numBad ? "ring-2 ring-bb-red" : ""}`}
+          >
+            <span className="font-semibold">#</span>
+            <input
+              value={numText}
+              onChange={(e) => setNumbers(e.target.value)}
+              placeholder="e.g. 10-20"
+              aria-label="Question numbers"
+              aria-invalid={numBad}
+              className="w-24 bg-transparent font-semibold outline-none placeholder:font-normal placeholder:text-bb-muted"
+            />
+          </label>
           {anyFilter && (
             <button onClick={clear} className="px-2 text-sm text-bb-muted hover:text-bb-ink">
               Clear all
             </button>
           )}
         </div>
+        {numBad && <p className="mt-2 text-sm text-bb-red">Type question numbers like 10-20, 34, or 1-5, 12.</p>}
 
         {/* Start a set from whatever is shown. */}
         <div className="mt-8 flex flex-wrap items-end gap-x-6 gap-y-4">
@@ -474,6 +515,11 @@ export function Bank({
               <span className="ml-2 text-base font-normal text-bb-muted">{shown.length === 1 ? "question" : "questions"}</span>
             </p>
             <p className="mt-1 text-sm text-bb-muted">{title}</p>
+            {byNumber && chapters.length > 1 && (
+              <p className="mt-1 text-sm text-bb-muted">
+                {chapters.join(" and ")} both have these numbers. Pick a Topic to choose one.
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
             <Segmented
@@ -485,18 +531,21 @@ export function Bank({
               onChange={setMode}
               label="Set type"
             />
-            <label className="flex items-center gap-2 text-sm text-bb-muted">
-              <input
-                type="number"
-                min={1}
-                max={pool.length || 1}
-                value={count}
-                onChange={(e) => setCount(Number(e.target.value))}
-                aria-label="Questions"
-                className="w-14 rounded-lg border border-bb-hair bg-bb-surface px-2 py-1.5 text-bb-ink"
-              />
-              questions
-            </label>
+            {/* Chosen numbers are practiced whole, so the count only applies otherwise. */}
+            {!byNumber && (
+              <label className="flex items-center gap-2 text-sm text-bb-muted">
+                <input
+                  type="number"
+                  min={1}
+                  max={pool.length || 1}
+                  value={count}
+                  onChange={(e) => setCount(Number(e.target.value))}
+                  aria-label="Questions"
+                  className="w-14 rounded-lg border border-bb-hair bg-bb-surface px-2 py-1.5 text-bb-ink"
+                />
+                questions
+              </label>
+            )}
             <select
               value={order}
               onChange={(e) => setOrder(e.target.value as "random" | "book")}
@@ -528,31 +577,35 @@ export function Bank({
             </div>
           ) : (
             <ul className="border-b border-bb-hair">
-              {shown.slice(0, limit).map((q) => {
+              {shown.slice(0, limit).map((q, i, list) => {
                 const p = progress[q.id];
                 const isOpen = open === q.id;
+                const head = chapters.length > 1 && (i === 0 || chapter(list[i - 1]) !== chapter(q)) ? chapter(q) : null;
                 return (
-                  <li key={q.id} className="border-t border-bb-hair">
-                    <button
-                      onClick={() => setOpen(isOpen ? null : q.id)}
-                      aria-expanded={isOpen}
-                      className="group flex w-full items-start gap-4 py-4 text-left"
-                    >
-                      <span className="w-8 shrink-0 pt-0.5 text-right font-semibold tabular-nums text-bb-muted group-hover:text-bb-ink">
-                        {q.sourceNumber}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <Snippet stem={q.stem} />
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2 pt-0.5">
-                        {p?.last.marked && <BookmarkIcon filled width={18} height={18} className="text-bb-red" />}
-                        <StatusIcon p={p} />
-                      </div>
-                    </button>
-                    {isOpen && (
-                      <Detail q={q} p={p} onPractice={() => start([q.id], "practice", `Question ${q.sourceNumber}`)} />
-                    )}
-                  </li>
+                  <Fragment key={q.id}>
+                    {head && <li className="pb-2 pt-8 text-sm font-semibold text-bb-muted first:pt-0">{head}</li>}
+                    <li className="border-t border-bb-hair">
+                      <button
+                        onClick={() => setOpen(isOpen ? null : q.id)}
+                        aria-expanded={isOpen}
+                        className="group flex w-full items-start gap-4 py-4 text-left"
+                      >
+                        <span className="w-8 shrink-0 pt-0.5 text-right font-semibold tabular-nums text-bb-muted group-hover:text-bb-ink">
+                          {q.sourceNumber}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <Snippet stem={q.stem} />
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2 pt-0.5">
+                          {p?.last.marked && <BookmarkIcon filled width={18} height={18} className="text-bb-red" />}
+                          <StatusIcon p={p} />
+                        </div>
+                      </button>
+                      {isOpen && (
+                        <Detail q={q} p={p} onPractice={() => start([q.id], "practice", `Question ${q.sourceNumber}`)} />
+                      )}
+                    </li>
+                  </Fragment>
                 );
               })}
             </ul>
