@@ -28,20 +28,21 @@ export function DbNotice({ status, error }: { status: DbStatus; error?: boolean 
           </>
         ) : hint?.kind === "other" ? (
           <>
-            <strong>A different kind of database is connected</strong> ({list(hint.names)}). This app uses Turso. In
-            Vercel, open this project → Storage → add a Turso database (free) and connect it, then redeploy.
+            <strong>A different kind of database is connected</strong> ({list(hint.names)}). This app uses Postgres
+            (Neon) or Turso. In Vercel, open this project → Storage → add one of those (both are free) and connect
+            it, then redeploy.
           </>
         ) : hint?.kind === "preview" ? (
           <>
             <strong>No database on this preview deployment.</strong> Database settings only reach the environments
             they&apos;re turned on for. In Vercel → Settings → Environment Variables, turn on <em>Preview</em> for
-            the Turso settings, then redeploy.
+            the database settings, then redeploy.
           </>
         ) : (
           <>
             <strong>No database connected.</strong> Progress is kept in this browser for now and uploads
             automatically once one is added. To add one: in Vercel, open this project → Storage → connect a
-            Turso database (free), then redeploy.
+            Neon (Postgres) or Turso database (both free), then redeploy.
           </>
         )}
       </p>

@@ -1,27 +1,55 @@
 import "server-only";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import type { Client } from "@libsql/client";
-import { diagnose, findDatabase, type DbHint } from "./db-env";
+import type { Client, InStatement } from "@libsql/client";
+import type { Pool, PoolClient } from "pg";
+import { diagnose, findDatabase, findPostgres, type DbHint } from "./db-env";
+import { jsonField, toPgDdl, toPgPlaceholders, type Engine } from "./sql";
 
 /**
  * Database connection.
  *
- * - `TURSO_DATABASE_URL` (+ `TURSO_AUTH_TOKEN`) set: a hosted Turso/libSQL database.
- *   Other names work too, e.g. from Vercel's Storage tab (see db-env.ts).
- * - Not set, running locally: a SQLite file at `.data/mather.db`.
- * - Not set, running on Vercel: no database. The browser keeps progress and uploads it later.
+ * - A Postgres address (`DATABASE_URL`, e.g. from Vercel's Neon integration): that database.
+ * - `TURSO_DATABASE_URL` (+ `TURSO_AUTH_TOKEN`): a hosted Turso/libSQL database.
+ *   Other names work too, e.g. with a prefix from Vercel's Storage tab (see db-env.ts).
+ * - Neither, running locally: a SQLite file at `.data/mather.db`.
+ * - Neither, running on Vercel: no database. The browser keeps progress and uploads it later.
+ *
+ * Queries are written once, in SQLite's dialect with `?` placeholders; the Postgres side translates
+ * (see sql.ts). JSON fields go through `db.json()` because the two spell them differently.
  */
 export type DbMode = "remote" | "local" | "none";
 
-function config(): { mode: DbMode; url?: string; authToken?: string } {
+export type Value = string | number | null | Uint8Array;
+export type Statement = string | { sql: string; args?: Value[] };
+export type Row = Record<string, unknown>;
+
+export interface Db {
+  engine: Engine;
+  execute(stmt: Statement): Promise<{ rows: Row[] }>;
+  /** Runs the statements in one transaction. */
+  batch(stmts: Statement[]): Promise<void>;
+  /** One field of a TEXT column holding JSON, as an SQL expression. */
+  json(column: string, key: string, as?: "text" | "number"): string;
+}
+
+type Config = { mode: DbMode; engine?: Engine; url?: string; authToken?: string };
+
+function config(): Config {
+  const pg = findPostgres(process.env);
+  if (pg) return { mode: "remote", engine: "postgres", url: pg.url };
   const found = findDatabase(process.env);
   if (found) {
-    return { mode: found.url.startsWith("file:") ? "local" : "remote", url: found.url, authToken: found.authToken };
+    return {
+      mode: found.url.startsWith("file:") ? "local" : "remote",
+      engine: "sqlite",
+      url: found.url,
+      authToken: found.authToken,
+    };
   }
   if (process.env.VERCEL) return { mode: "none" };
   const dir = path.join(process.cwd(), ".data");
-  return { mode: "local", url: `file:${path.join(dir, "mather.db")}` };
+  return { mode: "local", engine: "sqlite", url: `file:${path.join(dir, "mather.db")}` };
 }
 
 export function dbMode(): DbMode {
@@ -120,31 +148,24 @@ const MIGRATIONS: string[][] = [
   ],
 ];
 
-async function migrate(client: Client) {
+const VERSION_SQL = `INSERT INTO meta (key, value) VALUES ('schema_version', ?)
+  ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
+
+// ---------- SQLite / Turso ----------
+
+async function migrateSqlite(client: Client) {
   await client.execute(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
   const row = await client.execute(`SELECT value FROM meta WHERE key = 'schema_version'`);
   let version = row.rows.length ? Number(row.rows[0].value) : 0;
   while (version < MIGRATIONS.length) {
     version++;
-    await client.batch(
-      [
-        ...MIGRATIONS[version - 1],
-        {
-          sql: `INSERT INTO meta (key, value) VALUES ('schema_version', ?)
-                ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
-          args: [String(version)],
-        },
-      ],
-      "write",
-    );
+    await client.batch([...MIGRATIONS[version - 1], { sql: VERSION_SQL, args: [String(version)] }], "write");
   }
 }
 
-async function connect(): Promise<Client | null> {
-  const { mode, url, authToken } = config();
-  if (mode === "none" || !url) return null;
+async function sqliteDb(url: string, remote: boolean, authToken?: string): Promise<Db> {
   let client: Client;
-  if (mode === "remote") {
+  if (remote) {
     // HTTP client: no native code, works in any serverless runtime.
     const { createClient } = await import("@libsql/client/web");
     client = createClient({ url, authToken });
@@ -154,14 +175,103 @@ async function connect(): Promise<Client | null> {
     const { createClient } = await import("@libsql/client");
     client = createClient({ url });
   }
-  await migrate(client);
-  return client;
+  await migrateSqlite(client);
+  return {
+    engine: "sqlite",
+    execute: async (stmt) => ({ rows: (await client.execute(stmt as InStatement)).rows as unknown as Row[] }),
+    batch: async (stmts) => {
+      await client.batch(stmts as InStatement[], "write");
+    },
+    json: (column, key, as) => jsonField("sqlite", column, key, as),
+  };
+}
+
+// ---------- Postgres / Neon ----------
+
+function pgValue(v: Value) {
+  if (v instanceof Uint8Array && !Buffer.isBuffer(v)) return Buffer.from(v.buffer, v.byteOffset, v.byteLength);
+  // Every number column is BIGINT (see toPgDdl), and times can carry fractions of a millisecond,
+  // which SQLite stores as-is but Postgres rejects.
+  if (typeof v === "number" && !Number.isInteger(v)) return Math.round(v);
+  return v;
+}
+
+function pgQuery(stmt: Statement) {
+  const { sql, args = [] } = typeof stmt === "string" ? { sql: stmt } : stmt;
+  return { text: toPgPlaceholders(sql), values: args.map(pgValue) };
+}
+
+async function inTransaction(pool: Pool, run: (c: PoolClient) => Promise<void>) {
+  const c = await pool.connect();
+  try {
+    await c.query("BEGIN");
+    await run(c);
+    await c.query("COMMIT");
+  } catch (err) {
+    await c.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    c.release();
+  }
+}
+
+async function migratePg(pool: Pool) {
+  await inTransaction(pool, async (c) => {
+    // Several server instances may start at once on a fresh database; one migrates at a time.
+    await c.query("SELECT pg_advisory_xact_lock(7413201)");
+    await c.query(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+    const row = await c.query(`SELECT value FROM meta WHERE key = 'schema_version'`);
+    let version = row.rows.length ? Number(row.rows[0].value) : 0;
+    while (version < MIGRATIONS.length) {
+      version++;
+      for (const sql of MIGRATIONS[version - 1]) await c.query(toPgDdl(sql));
+      await c.query(pgQuery({ sql: VERSION_SQL, args: [String(version)] }));
+    }
+  });
+}
+
+async function postgresDb(url: string): Promise<Db> {
+  const { Pool, types } = await import("pg");
+  // Times are BIGINT and sums/averages NUMERIC; both come back as strings unless parsed.
+  const toNumber = (v: string) => Number(v);
+  const pool = new Pool({
+    connectionString: url,
+    max: 3,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 15_000,
+    types: {
+      getTypeParser: ((oid: number, format?: "text" | "binary") =>
+        oid === types.builtins.INT8 || oid === types.builtins.NUMERIC
+          ? toNumber
+          : types.getTypeParser(oid, format)) as typeof types.getTypeParser,
+    },
+  });
+  // Neon closes idle connections; the pool reconnects, so a dropped idle one isn't fatal.
+  pool.on("error", () => {});
+  await migratePg(pool);
+  return {
+    engine: "postgres",
+    execute: async (stmt) => ({ rows: (await pool.query(pgQuery(stmt))).rows as Row[] }),
+    batch: (stmts) =>
+      inTransaction(pool, async (c) => {
+        for (const s of stmts) await c.query(pgQuery(s));
+      }),
+    json: (column, key, as) => jsonField("postgres", column, key, as),
+  };
+}
+
+// ---------- Connection ----------
+
+async function connect(): Promise<Db | null> {
+  const { mode, engine, url, authToken } = config();
+  if (mode === "none" || !url) return null;
+  return engine === "postgres" ? postgresDb(url) : sqliteDb(url, mode === "remote", authToken);
 }
 
 // One connection per server process (kept on globalThis so dev reloads reuse it).
-const g = globalThis as unknown as { __matherDb?: Promise<Client | null> };
+const g = globalThis as unknown as { __matherDb?: Promise<Db | null> };
 
-export function getDb(): Promise<Client | null> {
+export function getDb(): Promise<Db | null> {
   if (!g.__matherDb) {
     g.__matherDb = connect().catch((err) => {
       g.__matherDb = undefined;

@@ -24,18 +24,19 @@ sets of colors). The test screen is the exception: it always looks like Bluebook
 
 ## Database
 
-Every attempt and finished test is saved to a SQLite database (libSQL).
+Every attempt and finished test is saved to a database. Any of these works:
 
-- **Locally** nothing to set up: it's a file at `.data/mather.db`, created on first use.
-- **On Vercel** use a free [Turso](https://turso.tech) database. Either:
-  - **From Vercel (easiest):** your project → Storage → Create Database (or Browse Marketplace) →
-    Turso → free plan → connect it to this project. Vercel adds the settings itself. Then
-    Deployments → ⋯ → Redeploy.
-  - **By hand:** create a database at turso.tech, copy its URL (`libsql://…`) and create a token, then
-    add `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in Settings → Environment Variables and redeploy.
+- **Neon (Postgres)**, the easiest on Vercel: your project → Storage → Create Database → Neon → free
+  plan → connect it to this project. Vercel adds `DATABASE_URL` itself. Then Deployments → ⋯ → Redeploy.
+  Any variable holding a `postgres://` address is found; the pooled `DATABASE_URL` is preferred.
+- **Turso (libSQL)**: connect it from Storage the same way, or create one at turso.tech and add
+  `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in Settings → Environment Variables. Any variable
+  holding a `libsql://` address is found, with the token from its sibling variable.
+- **Locally**, nothing to set up: a SQLite file at `.data/mather.db`, created on first use.
 
-  Tables are created automatically. Any variable holding a `libsql://` URL is found, whatever its name,
-  with the token from its sibling variable (`src/server/db-env.ts`).
+Tables are created automatically on first use. Queries are written once in SQLite's dialect and
+translated for Postgres (`src/server/sql.ts`); the connection lives in `src/server/db.ts` and the
+setting names are worked out in `src/server/db-env.ts`.
 
 Until a database is connected, the home page shows a notice and progress stays in the browser.
 Writes always go to a queue in the browser first (`src/lib/outbox.ts`) and are uploaded in the

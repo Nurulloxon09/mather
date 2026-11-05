@@ -1,6 +1,7 @@
 // Finding the database settings under the names different setups use.
 import assert from "node:assert/strict";
-import { diagnose, findDatabase } from "../src/server/db-env";
+import { diagnose, findDatabase, findPostgres } from "../src/server/db-env";
+import { jsonField, toPgDdl, toPgPlaceholders } from "../src/server/sql";
 
 const URL = "libsql://mather-me.aws-eu-west-1.turso.io";
 const cases: [string, Record<string, string>, string | undefined][] = [
@@ -28,11 +29,38 @@ assert.equal(findDatabase({ DATABASE_URL: "postgres://u:p@host/db" }), null, "po
 
 // Why nothing was found.
 assert.deepEqual(diagnose({ VERCEL: "1", TURSO_AUTH_TOKEN: "t" }), { kind: "unreadable", names: ["TURSO_AUTH_TOKEN"] });
-assert.deepEqual(diagnose({ VERCEL: "1", DATABASE_URL: "postgres://x", POSTGRES_URL: "postgres://x" }), {
+assert.deepEqual(diagnose({ VERCEL: "1", KV_URL: "rediss://x", REDIS_URL: "rediss://x" }), {
   kind: "other",
-  names: ["DATABASE_URL", "POSTGRES_URL"],
+  names: ["KV_URL", "REDIS_URL"],
 });
 assert.deepEqual(diagnose({ VERCEL: "1", VERCEL_ENV: "preview" }), { kind: "preview" });
 assert.deepEqual(diagnose({ VERCEL: "1", VERCEL_ENV: "production" }), { kind: "missing" });
 assert.deepEqual(diagnose({ NEXT_PUBLIC_TURSO_URL: "x", VERCEL_ENV: "production" }), { kind: "missing" }, "browser-exposed names ignored");
+
+// Neon / Postgres: the pooled DATABASE_URL first, whatever else the integration adds.
+const PG = "postgresql://user:pw@ep-cool-name-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require";
+const neon = {
+  DATABASE_URL: PG,
+  DATABASE_URL_UNPOOLED: PG.replace("-pooler", ""),
+  POSTGRES_URL: PG,
+  POSTGRES_URL_NON_POOLING: PG.replace("-pooler", ""),
+  POSTGRES_PRISMA_URL: PG,
+  PGHOST: "ep-cool-name-pooler.us-east-2.aws.neon.tech",
+};
+assert.equal(findPostgres(neon)?.urlKey, "DATABASE_URL");
+assert.equal(findPostgres({ POSTGRES_URL_NON_POOLING: "postgres://a", POSTGRES_URL: "postgres://b" })?.url, "postgres://b");
+assert.equal(findPostgres({ STORAGE_DATABASE_URL_UNPOOLED: "postgres://a", STORAGE_DATABASE_URL: "postgres://b" })?.urlKey, "STORAGE_DATABASE_URL");
+assert.equal(findPostgres({ DATABASE_URL_UNPOOLED: "postgres://a" })?.urlKey, "DATABASE_URL_UNPOOLED", "unpooled as a last resort");
+assert.equal(findPostgres({ DATABASE_URL: URL }), null, "libsql is not Postgres");
+assert.equal(findPostgres({ NEXT_PUBLIC_DB: PG }), null, "browser-exposed variables are ignored");
+assert.equal(findPostgres({ PATH: "/usr/bin" }), null);
+
+// SQL translation for Postgres.
+assert.equal(toPgPlaceholders("SELECT * FROM t WHERE a = ? AND b IN (?, ?)"), "SELECT * FROM t WHERE a = $1 AND b IN ($2, $3)");
+assert.equal(toPgPlaceholders("SELECT '?' AS q, x FROM t WHERE y = ?"), "SELECT '?' AS q, x FROM t WHERE y = $1");
+assert.equal(toPgDdl("created_at INTEGER NOT NULL, data BLOB NOT NULL"), "created_at BIGINT NOT NULL, data BYTEA NOT NULL");
+assert.equal(jsonField("sqlite", "s.data", "custom"), "json_extract(s.data, '$.custom')");
+assert.equal(jsonField("postgres", "s.data", "custom"), "((s.data)::jsonb ->> 'custom')");
+assert.equal(jsonField("postgres", "data", "page", "number"), "(((data)::jsonb ->> 'page'))::numeric");
+assert.throws(() => jsonField("postgres", "data; drop", "page"));
 console.log("db env tests passed");

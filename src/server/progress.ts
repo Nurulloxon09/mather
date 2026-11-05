@@ -1,5 +1,4 @@
 import "server-only";
-import type { InStatement, Row } from "@libsql/client";
 import { addAttempts, attemptsForSession, grade, type Attempt, type AttemptInput, type ProgressMap } from "@/lib/attempts";
 import type { SessionSummary } from "@/lib/history";
 import { estimateScore } from "@/lib/score";
@@ -7,7 +6,7 @@ import type { AttemptRow } from "@/lib/stats";
 import { sessionLabel, sessionScore, type ModuleState, type Session } from "@/lib/session";
 import type { Question } from "@/lib/types";
 import { getBankById } from "./bank";
-import { getDb } from "./db";
+import { getDb, type Row, type Statement } from "./db";
 
 export type { SessionSummary };
 
@@ -73,7 +72,7 @@ function cleanSession(v: unknown): Session | null {
 
 // ---------- Writes ----------
 
-function attemptStatement(a: Attempt): InStatement {
+function attemptStatement(a: Attempt): Statement {
   return {
     sql: `INSERT INTO attempts (id, session_id, question_id, mode, answer, correct, time_ms, marked, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -97,7 +96,7 @@ export async function syncProgress(body: unknown): Promise<SyncResult> {
   }
 
   const byId = await getBankById();
-  const statements: InStatement[] = [];
+  const statements: Statement[] = [];
   let nAttempts = 0;
   const seen = new Set<string>();
   const addAttempt = (a: Attempt | null) => {
@@ -128,7 +127,7 @@ export async function syncProgress(body: unknown): Promise<SyncResult> {
   }
   for (const raw of attempts) addAttempt(cleanAttempt(raw, byId));
 
-  if (statements.length) await db.batch(statements, "write");
+  if (statements.length) await db.batch(statements);
   return { ok: true, attempts: nAttempts, sessions: nSessions };
 }
 
@@ -164,7 +163,7 @@ export async function listSessions(limit = 1000): Promise<SessionSummary[] | nul
   if (!db) return null;
   const res = await db.execute({
     sql: `SELECT s.id, s.mode, s.title, s.finished_at, s.correct, s.total,
-            json_extract(s.data, '$.custom') AS custom, json_extract(s.data, '$.route') AS route,
+            ${db.json("s.data", "custom")} AS custom, ${db.json("s.data", "route")} AS route,
             COALESCE(a.t, 0) AS time_ms
           FROM sessions s
           LEFT JOIN (SELECT session_id, SUM(time_ms) AS t FROM attempts GROUP BY session_id) a ON a.session_id = s.id

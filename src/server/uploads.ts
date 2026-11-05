@@ -1,5 +1,4 @@
 import "server-only";
-import type { Client, InStatement, Row } from "@libsql/client";
 import { DIFFICULTIES, DOMAINS, LETTERS, SKILLS, type ChoiceLetter, type Question } from "@/lib/types";
 import {
   blankQuestion,
@@ -15,7 +14,7 @@ import {
   type UploadSummary,
 } from "@/lib/uploads";
 import { questionProblems } from "@/lib/validate";
-import { getDb } from "./db";
+import { getDb, type Db, type Row, type Statement } from "./db";
 import { fileIdsIn, newId, readFile, saveFile } from "./files";
 import type { ExtractedQuestion, KeyEntry } from "./gemini";
 
@@ -29,7 +28,7 @@ export class HttpError extends Error {
   }
 }
 
-export async function requireDb(): Promise<Client> {
+export async function requireDb(): Promise<Db> {
   const db = await getDb();
   if (!db) throw new HttpError(503, "No database is connected");
   return db;
@@ -96,7 +95,7 @@ export async function listUploads(): Promise<UploadSummary[] | null> {
   return res.rows.map(toSummary);
 }
 
-async function getSummary(db: Client, id: string) {
+async function getSummary(db: Db, id: string) {
   const res = await db.execute({ sql: `${SUMMARY_SQL} WHERE u.id = ?`, args: [id] });
   if (!res.rows.length) throw new HttpError(404, "Upload not found");
   return toSummary(res.rows[0]);
@@ -141,7 +140,7 @@ export async function savePage(
     args: [uploadId, page.page],
   });
   const fileId = page.image ? await saveFile(db, { uploadId, kind: "page", ...page.image }) : null;
-  const stmts: InStatement[] = [
+  const stmts: Statement[] = [
     {
       sql: `INSERT INTO upload_pages (upload_id, page, file_id, width, height, text, extracted_at)
             VALUES (?, ?, ?, ?, ?, ?, NULL)
@@ -154,7 +153,7 @@ export async function savePage(
   ];
   const oldFile = old.rows[0]?.file_id;
   if (oldFile) stmts.push({ sql: `DELETE FROM files WHERE id = ?`, args: [String(oldFile)] });
-  await db.batch(stmts, "write");
+  await db.batch(stmts);
 }
 
 /** Page images (base64) and text for the pages the AI will read next. */
@@ -187,13 +186,13 @@ export async function loadPagesForAi(uploadId: string, pages: number[]) {
 export async function sectionHints(uploadId: string, page: number) {
   const db = await requireDb();
   const all = await db.execute({
-    sql: `SELECT section, MIN(json_extract(data, '$.page')) AS p FROM uploaded_questions
+    sql: `SELECT section, MIN(${db.json("data", "page", "number")}) AS p FROM uploaded_questions
           WHERE upload_id = ? AND section != '' GROUP BY section ORDER BY p`,
     args: [uploadId],
   });
   const prev = await db.execute({
-    sql: `SELECT section FROM uploaded_questions WHERE upload_id = ? AND json_extract(data, '$.page') <= ?
-          ORDER BY json_extract(data, '$.page') DESC, number DESC LIMIT 1`,
+    sql: `SELECT section FROM uploaded_questions WHERE upload_id = ? AND ${db.json("data", "page", "number")} <= ?
+          ORDER BY ${db.json("data", "page", "number")} DESC, number DESC LIMIT 1`,
     args: [uploadId, page],
   });
   return { sections: all.rows.map((r) => String(r.section)), current: prev.rows[0] ? String(prev.rows[0].section) : "" };
@@ -203,7 +202,7 @@ export async function sectionHints(uploadId: string, page: number) {
 export async function deleteUpload(id: string) {
   const db = await requireDb();
   const summary = await getSummary(db, id);
-  const stmts: InStatement[] = [
+  const stmts: Statement[] = [
     { sql: `DELETE FROM files WHERE upload_id = ? AND kind = 'page'`, args: [id] },
     { sql: `DELETE FROM uploaded_questions WHERE upload_id = ? AND status != 'published'`, args: [id] },
     { sql: `DELETE FROM answer_keys WHERE upload_id = ?`, args: [id] },
@@ -217,7 +216,7 @@ export async function deleteUpload(id: string) {
       { sql: `DELETE FROM uploads WHERE id = ?`, args: [id] },
     );
   }
-  await db.batch(stmts, "write");
+  await db.batch(stmts);
 }
 
 // ---------- Drafts ----------
@@ -233,22 +232,22 @@ function toDraft(r: Row): Draft {
   };
 }
 
-async function listDrafts(db: Client, uploadId: string) {
+async function listDrafts(db: Db, uploadId: string) {
   const res = await db.execute({
     sql: `SELECT * FROM uploaded_questions WHERE upload_id = ?
-          ORDER BY json_extract(data, '$.page'), number, created_at`,
+          ORDER BY ${db.json("data", "page", "number")}, number, created_at`,
     args: [uploadId],
   });
   return res.rows.map(toDraft);
 }
 
-async function getDraft(db: Client, id: string) {
+async function getDraft(db: Db, id: string) {
   const res = await db.execute({ sql: `SELECT * FROM uploaded_questions WHERE id = ?`, args: [id] });
   if (!res.rows.length) throw new HttpError(404, "Question not found");
   return toDraft(res.rows[0]);
 }
 
-function draftStatement(d: Draft, insert = false): InStatement {
+function draftStatement(d: Draft, insert = false): Statement {
   const now = Date.now();
   return insert
     ? {
@@ -322,7 +321,7 @@ export async function recordExtraction(
   const db = await requireDb();
   const summary = await getSummary(db, uploadId);
   const drafts = await listDrafts(db, uploadId);
-  const stmts: InStatement[] = [];
+  const stmts: Statement[] = [];
   let added = 0;
   let updated = 0;
 
@@ -359,8 +358,9 @@ export async function recordExtraction(
     stmts.push({
       sql: `INSERT INTO answer_keys (upload_id, section, number, answers, explanation, page) VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT (upload_id, section, number) DO UPDATE SET
-              answers = CASE WHEN excluded.answers != '[]' THEN excluded.answers ELSE answers END,
-              explanation = CASE WHEN length(excluded.explanation) > length(explanation) THEN excluded.explanation ELSE explanation END`,
+              answers = CASE WHEN excluded.answers != '[]' THEN excluded.answers ELSE answer_keys.answers END,
+              explanation = CASE WHEN length(excluded.explanation) > length(answer_keys.explanation)
+                THEN excluded.explanation ELSE answer_keys.explanation END`,
       args: [uploadId, k.section, k.number, JSON.stringify(k.answers), k.explanation, k.page],
     });
   }
@@ -369,7 +369,7 @@ export async function recordExtraction(
     sql: `UPDATE upload_pages SET extracted_at = ? WHERE upload_id = ? AND page IN (${pages.map(() => "?").join(",")})`,
     args: [Date.now(), uploadId, ...pages],
   });
-  await db.batch(stmts, "write");
+  await db.batch(stmts);
   const keyed = await applyKeys(db, uploadId);
   return { added, updated, keys: result.answerKey.length, keyed };
 }
@@ -379,7 +379,7 @@ export async function recordExtraction(
  * match the question pages word for word, so after exact matches, key sections are paired with
  * question sections in the order they appear in the book.
  */
-async function applyKeys(db: Client, uploadId: string) {
+async function applyKeys(db: Db, uploadId: string) {
   const keysRes = await db.execute({
     sql: `SELECT section, number, answers, explanation, page FROM answer_keys WHERE upload_id = ? ORDER BY page`,
     args: [uploadId],
@@ -404,7 +404,7 @@ async function applyKeys(db: Client, uploadId: string) {
   const unmatchedDrafts = draftSections.filter((s) => ![...map.values()].includes(s));
   if (unmatchedKeys.length === unmatchedDrafts.length) unmatchedKeys.forEach((s, i) => map.set(s, unmatchedDrafts[i]));
 
-  const stmts: InStatement[] = [];
+  const stmts: Statement[] = [];
   for (const d of drafts) {
     if (d.status !== "draft" || d.meta.edited) continue;
     const sec = normalizeSection(d.meta.section);
@@ -434,7 +434,7 @@ async function applyKeys(db: Client, uploadId: string) {
       stmts.push(draftStatement({ ...d, question: q, meta }));
     }
   }
-  if (stmts.length) await db.batch(stmts, "write");
+  if (stmts.length) await db.batch(stmts);
   return stmts.length;
 }
 

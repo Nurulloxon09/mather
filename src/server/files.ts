@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import type { Client } from "@libsql/client";
+import type { Db } from "./db";
 
 // Images (page renders and cropped figures) live in the database's `files` table and are
 // served by /api/files/[id]. Files never change, so they can be cached forever.
@@ -12,7 +12,7 @@ export const MAX_FILE_BYTES = 4 * 1024 * 1024;
 export const newId = () => randomUUID().replace(/-/g, "").slice(0, 20);
 
 export async function saveFile(
-  db: Client,
+  db: Db,
   file: { uploadId: string | null; kind: FileKind; mime: string; data: Uint8Array },
 ) {
   const id = newId();
@@ -23,7 +23,7 @@ export async function saveFile(
   return id;
 }
 
-export async function readFile(db: Client, id: string): Promise<{ mime: string; data: Uint8Array } | null> {
+export async function readFile(db: Db, id: string): Promise<{ mime: string; data: Uint8Array } | null> {
   const res = await db.execute({ sql: `SELECT mime, data FROM files WHERE id = ?`, args: [id] });
   if (!res.rows.length) return null;
   const raw = res.rows[0].data as ArrayBuffer | Uint8Array;
