@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { AppHeader, PAGE } from "@/components/AppHeader";
 import { DbNotice } from "@/components/DbNotice";
 import { UploadHome } from "@/components/upload/UploadHome";
-import { dbMode } from "@/server/db";
+import { dbStatus } from "@/server/db";
 import { geminiConfigured } from "@/server/gemini";
 import { orNull } from "@/server/progress";
 import { listUploads } from "@/server/uploads";
@@ -27,7 +27,7 @@ async function UploadData() {
   const uploads = await orNull(listUploads);
   return (
     <>
-      <DbNotice mode={dbMode()} error={uploads.error} />
+      <DbNotice status={dbStatus()} error={uploads.error} />
       <UploadHome uploads={uploads.data} geminiReady={geminiConfigured()} />
     </>
   );

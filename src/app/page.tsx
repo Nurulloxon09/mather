@@ -3,13 +3,13 @@ import { connection } from "next/server";
 import { AppHeader } from "@/components/AppHeader";
 import { Home, type RecentData } from "@/components/home/Home";
 import { getBank } from "@/server/bank";
-import { dbMode } from "@/server/db";
+import { dbStatus } from "@/server/db";
 import { listSessions, orNull } from "@/server/progress";
 
 async function loadRecent(): Promise<RecentData> {
   await connection();
   const { data, error } = await orNull(() => listSessions(8));
-  return { sessions: data, mode: dbMode(), error };
+  return { sessions: data, db: dbStatus(), error };
 }
 
 export default function Page() {

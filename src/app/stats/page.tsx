@@ -7,7 +7,7 @@ import { StatsTabs } from "@/components/stats/StatsTabs";
 import { StatsView } from "@/components/stats/StatsView";
 import type { QMeta } from "@/lib/stats";
 import { getBank } from "@/server/bank";
-import { dbMode } from "@/server/db";
+import { dbStatus } from "@/server/db";
 import { getAttemptRows, listSessions, orNull } from "@/server/progress";
 
 export const metadata: Metadata = { title: "Stats · Mather" };
@@ -44,7 +44,7 @@ async function StatsData() {
   const { bankSize, rows, sessions, meta, now } = await loadStats();
   return (
     <>
-      <DbNotice mode={dbMode()} error={rows.error || sessions.error} />
+      <DbNotice status={dbStatus()} error={rows.error || sessions.error} />
       <main className={`${PAGE} py-6 sm:py-10`}>
         <StatsTabs active="overview" />
         <StatsView rows={rows.data ?? []} meta={meta} sessions={sessions.data ?? []} bankSize={bankSize} now={now} />

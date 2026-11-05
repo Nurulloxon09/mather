@@ -20,9 +20,9 @@ import {
 } from "@/lib/session";
 import { mergeSessions, type SessionSummary } from "@/lib/history";
 import type { Question } from "@/lib/types";
-import type { DbMode } from "@/server/db";
+import type { DbStatus } from "@/server/db";
 
-export type RecentData = { sessions: SessionSummary[] | null; mode: DbMode; error: boolean };
+export type RecentData = { sessions: SessionSummary[] | null; db: DbStatus; error: boolean };
 
 function answered(s: Session) {
   return sessionModules(s).reduce((n, m) => n + m.questionIds.filter((id) => m.items[id]?.answer).length, 0);
@@ -106,8 +106,8 @@ function Switch({ on, onChange, label, hint }: { on: boolean; onChange: (on: boo
 }
 
 function Notice({ recent }: { recent: Promise<RecentData> }) {
-  const { mode, error } = use(recent);
-  return <DbNotice mode={mode} error={error} />;
+  const { db, error } = use(recent);
+  return <DbNotice status={db} error={error} />;
 }
 
 function Recent({ recent, byId }: { recent: Promise<RecentData>; byId: Map<string, Question> }) {

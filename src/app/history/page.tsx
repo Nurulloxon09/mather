@@ -6,7 +6,7 @@ import { DbNotice } from "@/components/DbNotice";
 import { HistoryView } from "@/components/stats/HistoryView";
 import { StatsTabs } from "@/components/stats/StatsTabs";
 import { getBank } from "@/server/bank";
-import { dbMode } from "@/server/db";
+import { dbStatus } from "@/server/db";
 import { listSessions, orNull } from "@/server/progress";
 
 export const metadata: Metadata = { title: "History · Mather" };
@@ -34,7 +34,7 @@ async function HistoryData() {
   const [bank, sessions] = await Promise.all([getBank(), orNull(() => listSessions())]);
   return (
     <>
-      <DbNotice mode={dbMode()} error={sessions.error} />
+      <DbNotice status={dbStatus()} error={sessions.error} />
       <main className={`${PAGE} py-6 sm:py-10`}>
         <StatsTabs active="history" />
         <HistoryView sessions={sessions.data} bank={bank} />

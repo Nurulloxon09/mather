@@ -5,7 +5,7 @@ import { AppHeader, PAGE } from "@/components/AppHeader";
 import { Bank } from "@/components/bank/Bank";
 import { DbNotice } from "@/components/DbNotice";
 import { getBank } from "@/server/bank";
-import { dbMode } from "@/server/db";
+import { dbStatus } from "@/server/db";
 import { getProgress, orNull } from "@/server/progress";
 
 export const metadata: Metadata = { title: "Practice · Mather" };
@@ -22,7 +22,7 @@ async function BankData() {
   await connection();
   const [bank, progress] = await Promise.all([getBank(), orNull(getProgress)]);
   return (
-    <Bank bank={bank} progress={progress.data} notice={<DbNotice mode={dbMode()} error={progress.error} />} />
+    <Bank bank={bank} progress={progress.data} notice={<DbNotice status={dbStatus()} error={progress.error} />} />
   );
 }
 

@@ -2,7 +2,7 @@ import "server-only";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Client } from "@libsql/client";
-import { findDatabase } from "./db-env";
+import { diagnose, findDatabase, type DbHint } from "./db-env";
 
 /**
  * Database connection.
@@ -26,6 +26,14 @@ function config(): { mode: DbMode; url?: string; authToken?: string } {
 
 export function dbMode(): DbMode {
   return config().mode;
+}
+
+/** The mode, plus why there's no database when there isn't one (setting names only, never values). */
+export type DbStatus = { mode: DbMode; hint?: DbHint };
+
+export function dbStatus(): DbStatus {
+  const mode = dbMode();
+  return mode === "none" ? { mode, hint: diagnose(process.env) } : { mode };
 }
 
 // Each entry moves the schema up one version. Never edit a released entry; add a new one.

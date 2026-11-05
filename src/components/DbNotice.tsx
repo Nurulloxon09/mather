@@ -1,22 +1,47 @@
-import type { DbMode } from "@/server/db";
+import type { DbStatus } from "@/server/db";
 import { PAGE } from "./AppHeader";
 
-/** Note shown when progress can't reach the database. */
-export function DbNotice({ mode, error }: { mode: DbMode; error?: boolean }) {
-  if (mode !== "none" && !error) return null;
+const list = (names: string[]) => names.map((n, i) => (
+  <span key={n}>
+    {i > 0 && ", "}
+    <code>{n}</code>
+  </span>
+));
+
+/** Note shown when progress can't reach the database, saying what to fix. */
+export function DbNotice({ status, error }: { status: DbStatus; error?: boolean }) {
+  if (status.mode !== "none" && !error) return null;
+  const hint = status.hint;
   return (
     <div className={PAGE}>
       <p className="rounded-lg bg-bb-amber-soft px-4 py-2.5 text-sm">
-        {mode === "none" ? (
+        {status.mode !== "none" ? (
+          <>
+            <strong>Couldn&apos;t reach the database.</strong> Showing what this browser has saved; it will sync
+            when the database is back.
+          </>
+        ) : hint?.kind === "unreadable" ? (
+          <>
+            <strong>Database settings found, but no address.</strong> This deployment has {list(hint.names)}, but none
+            of them holds the database address (it starts with <code>libsql://</code>). In Vercel → Settings →
+            Environment Variables, add it as <code>TURSO_DATABASE_URL</code>, then redeploy.
+          </>
+        ) : hint?.kind === "other" ? (
+          <>
+            <strong>A different kind of database is connected</strong> ({list(hint.names)}). This app uses Turso. In
+            Vercel, open this project → Storage → add a Turso database (free) and connect it, then redeploy.
+          </>
+        ) : hint?.kind === "preview" ? (
+          <>
+            <strong>No database on this preview deployment.</strong> Database settings only reach the environments
+            they&apos;re turned on for. In Vercel → Settings → Environment Variables, turn on <em>Preview</em> for
+            the Turso settings, then redeploy.
+          </>
+        ) : (
           <>
             <strong>No database connected.</strong> Progress is kept in this browser for now and uploads
             automatically once one is added. To add one: in Vercel, open this project → Storage → connect a
             Turso database (free), then redeploy.
-          </>
-        ) : (
-          <>
-            <strong>Couldn&apos;t reach the database.</strong> Showing what this browser has saved; it will sync
-            when the database is back.
           </>
         )}
       </p>
