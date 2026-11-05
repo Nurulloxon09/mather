@@ -5,6 +5,11 @@ import { CloseIcon, CollapseIcon, ExpandIcon, GripIcon } from "./icons";
 
 type Rect = { x: number; y: number; w: number; h: number };
 
+// Heights of the test screen's top and bottom bars, and the margin kept around the panel.
+const TOP_BAR = 74;
+const BOTTOM_BAR = 68;
+const GAP = 8;
+
 /**
  * A draggable, resizable window used for the calculator and reference sheet.
  * Stays mounted while hidden so its contents (e.g. Desmos state) persist.
@@ -31,22 +36,33 @@ export function FloatingPanel({
   const before = useRef<Rect | null>(null);
   const drag = useRef<{ mode: "move" | "resize"; sx: number; sy: number; start: Rect } | null>(null);
 
+  // Keep the whole panel on screen, between the top bar and the bottom bar.
   const clamp = useCallback(
     (r: Rect): Rect => {
       const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const w = Math.min(Math.max(r.w, minW), vw);
-      const h = Math.min(Math.max(r.h, minH), vh);
+      const top = TOP_BAR + GAP;
+      const bottom = window.innerHeight - BOTTOM_BAR - GAP;
+      const w = Math.max(Math.min(r.w, vw - 2 * GAP), Math.min(minW, vw - 2 * GAP));
+      const h = Math.max(Math.min(r.h, bottom - top), Math.min(minH, bottom - top));
       return {
         w,
         h,
-        x: Math.min(Math.max(r.x, 0), vw - Math.min(w, 120)),
-        // Stay below the top bar so the panel's handle is always reachable.
-        y: Math.min(Math.max(r.y, 76), vh - 40),
+        x: Math.min(Math.max(r.x, GAP), vw - w - GAP),
+        y: Math.min(Math.max(r.y, top), Math.max(top, bottom - h)),
       };
     },
     [minW, minH],
   );
+
+  // Fit the screen when opened and whenever the window changes size.
+  useEffect(() => {
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sizes depend on the window
+    setRect((r) => clamp(r));
+    const fit = () => setRect((r) => clamp(r));
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [open, clamp]);
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -77,6 +93,7 @@ export function FloatingPanel({
   const begin = (mode: "move" | "resize", e: React.PointerEvent) => {
     if (expanded) return;
     e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     drag.current = { mode, sx: e.clientX, sy: e.clientY, start: rect };
     document.body.style.userSelect = "none";
   };
@@ -92,7 +109,12 @@ export function FloatingPanel({
   };
 
   const style = expanded
-    ? { left: 16, top: 80, width: "calc(100vw - 32px)", height: "calc(100vh - 170px)" }
+    ? {
+        left: GAP,
+        top: TOP_BAR + GAP,
+        width: `calc(100vw - ${2 * GAP}px)`,
+        height: `calc(100dvh - ${TOP_BAR + BOTTOM_BAR + 2 * GAP}px)`,
+      }
     : { left: rect.x, top: rect.y, width: rect.w, height: rect.h };
 
   return (
@@ -105,7 +127,7 @@ export function FloatingPanel({
       <div
         onPointerDown={(e) => begin("move", e)}
         onDoubleClick={toggleExpand}
-        className={`flex h-10 shrink-0 items-center gap-2 bg-[#1e1e1e] px-3 text-white ${expanded ? "" : "cursor-move"}`}
+        className={`flex h-10 shrink-0 touch-none items-center gap-2 bg-[#1e1e1e] px-3 text-white ${expanded ? "" : "cursor-move"}`}
       >
         <GripIcon width={16} height={16} className="opacity-70" />
         <span className="text-sm font-bold tracking-wide">{title}</span>
@@ -134,7 +156,7 @@ export function FloatingPanel({
       {!expanded && (
         <div
           onPointerDown={(e) => begin("resize", e)}
-          className="absolute bottom-0 right-0 h-4 w-4 cursor-se-resize"
+          className="absolute bottom-0 right-0 h-5 w-5 cursor-se-resize touch-none"
           style={{
             background:
               "linear-gradient(135deg, transparent 50%, #1e1e1e 50%, #1e1e1e 60%, transparent 60%, transparent 70%, #1e1e1e 70%, #1e1e1e 80%, transparent 80%)",

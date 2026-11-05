@@ -91,7 +91,10 @@ Leave it unset to keep the app open.
 
 - **Bluebook UI** (`src/components/bluebook/`)
   - Top bar: section title, Directions dropdown, countdown with Hide/Show (locked visible with a warning at 5:00), Calculator, Reference, Fullscreen, More.
-  - Desmos graphing calculator and reference sheet in draggable, resizable panels.
+  - Desmos graphing calculator docked on the left: the question moves over instead of being covered,
+    the right edge drags to resize (the width is remembered), Expand makes it wide, and graphs stay
+    between questions. It loads in the background when a test opens, so it's ready when you press it.
+  - Reference sheet in a draggable, resizable window that always stays on screen.
   - Question header: number box, Mark for Review, "ABC" answer elimination.
   - Multiple-choice answer boxes, and a grid-in answer box with live Answer Preview. The grid-in entry rules are in the Directions dropdown.
   - Bottom bar: your name (entered on the start screen before an exam or timed set), a "Question X of Y" navigator, Back/Next.

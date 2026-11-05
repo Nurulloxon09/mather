@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { BottomBar } from "../bluebook/BottomBar";
-import { Calculator } from "../bluebook/Calculator";
+import { Calculator, preloadDesmos } from "../bluebook/Calculator";
 import type { GridCell } from "../bluebook/QuestionGrid";
 import { ReferenceSheet } from "../bluebook/ReferenceSheet";
 import { TopBar, type MoreItem } from "../bluebook/TopBar";
@@ -49,6 +49,8 @@ export function TestShell({
   const [calcOpen, setCalcOpen] = useState(false);
   const [refOpen, setRefOpen] = useState(false);
 
+  useEffect(() => preloadDesmos(), []);
+
   return (
     <div className="bb-light flex h-dvh flex-col overflow-hidden bg-white">
       <TopBar
@@ -64,7 +66,11 @@ export function TestShell({
         onRef={() => setRefOpen((v) => !v)}
         moreItems={moreItems}
       />
-      <main className="relative min-h-0 flex-1">{children}</main>
+      {/* The calculator docks on the left and the question moves over, so neither covers the other. */}
+      <div className="relative flex min-h-0 flex-1">
+        <Calculator open={calcOpen} onClose={() => setCalcOpen(false)} />
+        <main className="relative min-h-0 min-w-0 flex-1">{children}</main>
+      </div>
       <BottomBar
         name={name}
         title={navTitle}
@@ -77,7 +83,6 @@ export function TestShell({
       >
         {buttons}
       </BottomBar>
-      <Calculator open={calcOpen} onClose={() => setCalcOpen(false)} />
       <ReferenceSheet open={refOpen} onClose={() => setRefOpen(false)} />
     </div>
   );
