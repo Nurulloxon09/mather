@@ -109,7 +109,14 @@ Leave it unset to keep the app open.
 
 ## Question bank (Phase 2)
 
-`/bank` (**Practice** in the menu) lists every question, with one row of filter menus: status
+`/bank` (**Practice** in the menu) opens on the four sections, **Algebra, Advanced Math, Geometry and
+Problem Solving**, each drawn as a glass folder (`src/components/ui/glass-folder-cards.tsx`). Hover one
+and its glass leans forward. Click it, or press Enter, and its sheets fan out: the biggest topics, with
+"All N topics" at the front. Pick a sheet to open that topic's list. **Sections** at the top of the list
+(or the browser's Back) returns to the folders, and **All N questions** (`/bank?all`) skips them. Links
+with filters, such as Redo missed or a Stats "Practice" link, go straight to the list.
+
+The list has one row of filter menus: status
 (unanswered, incorrect, correct, marked for review), topic (domain and skill), type, and difficulty and
 source once there's more than one of them. Filters combine (OR inside a group, AND across groups) and
 live in the URL, so `/bank?status=incorrect&domain=Advanced+Math&difficulty=Hard` is a

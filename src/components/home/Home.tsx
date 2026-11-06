@@ -223,7 +223,7 @@ export function Home({ bank, recent }: { bank: Question[]; recent: Promise<Recen
             )}
           </div>
           <div className="space-y-3">
-            <Action title="Practice" sub={`${bank.length} questions by topic`} href="/bank" />
+            <Action title="Practice" sub={`${bank.length} questions in 4 sections`} href="/bank" />
             <div className="flex gap-5 text-sm">
               <button className="text-bb-muted hover:text-bb-ink" onClick={quickPractice}>
                 Quick 10

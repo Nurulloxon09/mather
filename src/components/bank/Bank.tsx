@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppHeader, PAGE as WIDTH } from "../AppHeader";
 import { BookmarkIcon, CheckCircle, XCircle } from "../bluebook/icons";
@@ -8,6 +9,7 @@ import { formatClock } from "../bluebook/TopBar";
 import { LocalDate } from "../LocalDate";
 import { Rich, RichInline } from "../Rich";
 import { Segmented } from "../Segmented";
+import { Sections, type SectionPick } from "./Sections";
 import { hasStatus, type ProgressMap, type QuestionProgress, type Status } from "@/lib/attempts";
 import { formatRanges, inRanges, parseNumberRanges } from "@/lib/numbers";
 import { parseBlocks, tex } from "@/lib/rich";
@@ -55,12 +57,17 @@ function readFilters(params: URLSearchParams): Filters {
   return f;
 }
 
-function writeFilters(f: Filters) {
+/** History entries opened from the sections, so "Sections" can step back instead of piling up. */
+const FROM_SECTIONS = "matherFromSections";
+
+function writeFilters(f: Filters, how: "replace" | "push" = "replace") {
   const p = new URLSearchParams();
   for (const g of GROUPS) for (const v of f[g]) p.append(g, v);
-  const qs = p.toString();
+  // A bare /bank shows the sections, so the full list with nothing picked is /bank?all.
+  const url = `?${p.toString() || "all"}`;
   // Native history updates keep useSearchParams in sync without a server round trip.
-  window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  if (how === "push") window.history.pushState({ [FROM_SECTIONS]: true }, "", url);
+  else window.history.replaceState({ [FROM_SECTIONS]: window.history.state?.[FROM_SECTIONS] }, "", url);
 }
 
 function valueMatches(g: Group, v: string, q: Question, progress: ProgressMap) {
@@ -346,6 +353,8 @@ export function Bank({
   const byId = useMemo(() => new Map(bank.map((q) => [q.id, q])), [bank]);
   const progress = useProgress(serverProgress, byId);
   const filters = useMemo(() => readFilters(new URLSearchParams(params.toString())), [params]);
+  // Any query (a filter, or ?all) is the question list; a bare /bank is the four sections.
+  const browsing = params.toString() !== "";
 
   const [open, setOpen] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
@@ -396,7 +405,23 @@ export function Bank({
   };
   const anyFilter = GROUPS.some((g) => filters[g].length > 0);
 
-  const domains = DOMAINS.filter((d) => bank.some((q) => q.domain === d));
+  // Into the list from the sections (a new history entry, so Back returns), and out again.
+  const browse = (pick: Partial<Filters>) => {
+    writeFilters({ ...NO_FILTERS, ...pick }, "push");
+    setNumText("");
+    setOrder("random");
+    setLimit(PAGE);
+    setOpen(null);
+    window.scrollTo(0, 0);
+  };
+  const toSections = () => {
+    if (window.history.state?.[FROM_SECTIONS]) return window.history.back();
+    window.history.pushState(null, "", window.location.pathname);
+    window.scrollTo(0, 0);
+  };
+
+  // A picked section stays in the Topic menu even before it has questions.
+  const domains = DOMAINS.filter((d) => filters.domain.includes(d) || bank.some((q) => q.domain === d));
   const difficulties = DIFFICULTIES.filter((d) => bank.some((q) => q.difficulty === d));
   const sources = [...new Set(bank.map((q) => q.source))];
 
@@ -439,15 +464,44 @@ export function Bank({
   const topicOptions: Option[] = domains.flatMap((d) => [
     { value: `d:${d}`, label: d, count: facet("domain", d), on: filters.domain.includes(d), strong: true },
     ...SKILLS[d]
-      .filter((sk) => bank.some((q) => q.skill === sk))
+      .filter((sk) => filters.skill.includes(sk) || bank.some((q) => q.skill === sk))
       .map((sk) => ({ value: `s:${sk}`, label: sk, count: facet("skill", sk), on: filters.skill.includes(sk), indent: true })),
   ]);
+
+  if (!browsing) {
+    return (
+      // An open folder's fan may reach past a phone's edge; trim it there rather than scroll sideways.
+      <div className="min-h-dvh overflow-x-clip">
+        <AppHeader active="bank" />
+        {notice}
+        <main className={`${WIDTH} py-6 sm:py-10`}>
+          <Sections
+            bank={bank}
+            progress={progress}
+            onPick={(pick: SectionPick) => browse("skill" in pick ? { skill: [pick.skill] } : { domain: [pick.domain] })}
+            onAll={() => browse({})}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  // Nothing in the picked section or topic yet (as opposed to filters that leave nothing).
+  const emptyTopic =
+    (filters.domain.length > 0 || filters.skill.length > 0) &&
+    !bank.some((q) => matches(q, { ...NO_FILTERS, domain: filters.domain, skill: filters.skill }, progress));
 
   return (
     <div className="min-h-dvh">
       <AppHeader active="bank" />
       {notice}
       <main className={`${WIDTH} py-6 sm:py-10`}>
+        <button onClick={toSections} className="-ml-1 mb-5 flex items-center gap-1 text-sm font-semibold text-bb-muted hover:text-bb-ink">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+            <path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Sections
+        </button>
         {/* Filters: one row of menus. Groups with a single value (all "Hard", one book) are left out. */}
         <div className="relative flex flex-wrap items-center gap-2">
           <FilterMenu
@@ -568,7 +622,18 @@ export function Bank({
         </p>
 
         <div className="mt-6">
-          {shown.length === 0 ? (
+          {shown.length === 0 && emptyTopic ? (
+            <div className="border-t border-bb-hair py-14 text-center">
+              <p className="font-semibold">No questions here yet.</p>
+              <p className="mt-2 text-sm text-bb-muted">
+                Add some from a book chapter on the{" "}
+                <Link href="/upload" className="font-semibold text-bb-ink underline underline-offset-4">
+                  Upload
+                </Link>{" "}
+                page.
+              </p>
+            </div>
+          ) : shown.length === 0 ? (
             <div className="border-t border-bb-hair py-14 text-center">
               <p className="font-semibold">No questions match these filters.</p>
               <button onClick={clear} className="mt-2 text-sm text-bb-muted hover:text-bb-ink">
