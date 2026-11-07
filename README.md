@@ -128,7 +128,7 @@ From any filter, start a set of N questions:
   you submit, then a results page.
 
 **By number:** type question numbers in the `#` box, like `10-20`, `34`, or `1-5, 12`, to practice just
-those, in book order. Numbers restart in each chapter, so pick a Topic (Algebra or Advanced Math) to
+those, in book order. Numbers restart in each chapter, so pick a Topic (Algebra, Advanced Math or Problem Solving) to
 choose one; otherwise the list shows both, under chapter headings. The numbers go in the URL too
 (`/bank?domain=Algebra&num=10-20`).
 
@@ -168,9 +168,9 @@ Built-in questions live in `src/data/` as TypeScript; uploaded ones are stored i
 
 Figures are cropped from the source PDF with the watermark removed (`public/figures/mhb/`).
 
-### Math Hard Book (Algebra + Advanced Math)
+### Math Hard Book (Algebra, Advanced Math, Problem Solving)
 
-150 questions: 37 Algebra and 113 Advanced Math, all tagged Hard. Every question has a written explanation. The book only had answer keys, so each answer was re-derived and checked, with SymPy for the algebra-heavy ones.
+218 questions: 37 Algebra, 113 Advanced Math and 68 Problem Solving (pages 74–92), all tagged Hard. Every question has a written explanation. The book only had answer keys, so each answer was re-derived and checked, with SymPy for the algebra-heavy ones.
 
 **Answer key corrections:**
 - Algebra: #31 (key D, correct B)
@@ -187,6 +187,10 @@ Figures are cropped from the source PDF with the watermark removed (`public/figu
   - #83 (C → A)
   - #88 (10 → 12)
 - #47, #97 and #99 had letter keys but no answer choices. They're grid-ins with answers −32, −11 and 10.
+- Problem Solving:
+  - #15 (D → A), #33 (B → D), #42 (B → D), #63 (C → A), #65 (C → A)
+  - #68 (D → C), #70 (D → B), #71 (C → A), #72 (D → A)
+  - #28 (13 → 14), #57 (0.1872 → 19459), #77 (0.32 → 1)
 
 Each correction is explained in the question's explanation.
 
@@ -199,10 +203,17 @@ Each correction is explained in the question's explanation.
   - #71 (garbled)
   - #84 (wording)
   - #89 (typesetting)
+- Problem Solving:
+  - #25 asks for the nearest tenth (the book's nearest hundredth doesn't fit the five-character answer box)
+  - #32 (first words cut off)
+  - #57 (rounding instruction added so the answer fits the box)
+  - #78 (the description of the histogram bars was garbled)
 
 **Flagged** because they can't be fixed confidently: Algebra #14 and Advanced Math #11, #22, #76 and #108. They show a "source issue" note and are never used in exams.
 
-**Skipped duplicates:** Advanced Math #6, #38, #95, #96, #117 and #119–123 repeat earlier questions.
+**Skipped duplicates:** Advanced Math #6, #38, #95, #96, #117 and #119–123 repeat earlier questions. Problem Solving #37, #60, #66, #69, #73, #74, #75 and #76 repeat earlier ones (#75 and #76 also lost their figures).
+
+**Skipped, figure missing:** Problem Solving #62 and #67 refer to a scatterplot the book doesn't print.
 
 ## Roadmap
 

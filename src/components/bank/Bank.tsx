@@ -571,7 +571,8 @@ export function Bank({
             <p className="mt-1 text-sm text-bb-muted">{title}</p>
             {byNumber && chapters.length > 1 && (
               <p className="mt-1 text-sm text-bb-muted">
-                {chapters.join(" and ")} both have these numbers. Pick a Topic to choose one.
+                {chapters.length === 2 ? `${chapters[0]} and ${chapters[1]} both have` : `${chapters.length} chapters have`} these
+                numbers. Pick a Topic to choose one.
               </p>
             )}
           </div>
