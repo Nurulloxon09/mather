@@ -13,7 +13,7 @@ import { GlassSegment, type GlassView } from "../ui/adjustable-glass-dashboard";
 import { Sections, type SectionPick } from "./Sections";
 import { hasStatus, type ProgressMap, type QuestionProgress, type Status } from "@/lib/attempts";
 import { formatRanges, inRanges, parseNumberRanges } from "@/lib/numbers";
-import { parseBlocks, tex } from "@/lib/rich";
+import { tex } from "@/lib/rich";
 import { shuffle } from "@/lib/select";
 import {
   answerTex,
@@ -177,37 +177,24 @@ export function StatusIcon({ p, size = 22 }: { p?: QuestionProgress; size?: numb
   if (!p)
     return (
       <span
+        role="img"
+        aria-label="Not answered yet"
         title="Not answered yet"
         className="inline-block rounded-full border-[1.5px] border-dashed border-bb-faint"
         style={{ width: size - 2, height: size - 2 }}
       />
     );
   const label = `${p.last.correct ? "Correct" : "Incorrect"} last time · ${p.nCorrect}/${p.n} correct overall`;
-  return p.last.correct ? (
-    <CheckCircle width={size} height={size} className="text-bb-green" aria-label={label} />
-  ) : (
-    <XCircle width={size} height={size} className="text-bb-red" aria-label={label} />
-  );
-}
-
-/** The opening text and equations of a question, run together on two lines. */
-function Snippet({ stem }: { stem: string }) {
-  const html = useMemo(() => {
-    const parts: string[] = [];
-    for (const b of parseBlocks(stem)) {
-      if (b.t === "p") parts.push(b.html);
-      // Single-line equations go inline; multi-line systems would just be clipped.
-      else if (b.t === "math") {
-        if (!b.src.includes("\\\\")) parts.push(tex(b.src));
-      } else if (parts.length) break; // stop at the first figure or table after some text
-      if (parts.length === 3) break;
-    }
-    return parts.join(" ");
-  }, [stem]);
+  // The icons are hidden from screen readers by default; these ones carry the status.
+  const Icon = p.last.correct ? CheckCircle : XCircle;
   return (
-    <div
-      className="rich line-clamp-2 !text-[15px] !leading-snug"
-      dangerouslySetInnerHTML={{ __html: html || "<em>Figure</em>" }}
+    <Icon
+      width={size}
+      height={size}
+      className={p.last.correct ? "text-bb-green" : "text-bb-red"}
+      role="img"
+      aria-hidden={false}
+      aria-label={label}
     />
   );
 }
@@ -216,9 +203,6 @@ function Detail({ q, p, onPractice }: { q: Question; p?: QuestionProgress; onPra
   const [reveal, setReveal] = useState(false);
   return (
     <div className="gw-qdetail space-y-5">
-      <p className="text-sm text-bb-muted">
-        {q.domain} · {q.skill} · {TYPE_LABEL[q.type]} · {q.difficulty}
-      </p>
       <Rich src={q.stem} />
       {q.type === "mcq" ? (
         <ol className="space-y-2">
@@ -258,7 +242,7 @@ function Detail({ q, p, onPractice }: { q: Question; p?: QuestionProgress; onPra
           {reveal ? "Hide answer" : "Show answer and explanation"}
         </button>
         <span className="ml-auto text-xs text-bb-muted">
-          {q.source} #{q.sourceNumber}
+          {q.domain} · {q.source} #{q.sourceNumber}
           {q.page ? ` · page ${q.page}` : ""}
         </span>
       </div>
@@ -611,13 +595,17 @@ export function Bank({
                   <li>
                     <button onClick={() => setOpen(isOpen ? null : q.id)} aria-expanded={isOpen} className="gw-qrow">
                       <span className="gw-qnum tabular-nums">{q.sourceNumber}</span>
-                      <div className="min-w-0 flex-1 pt-1.5">
-                        <Snippet stem={q.stem} />
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2 pt-1.5">
-                        {p?.last.marked && <BookmarkIcon filled width={18} height={18} className="text-bb-red" />}
-                        <StatusIcon p={p} />
-                      </div>
+                      <span className="gw-qskill">{q.skill}</span>
+                      <span className="gw-qmeta">
+                        {q.difficulty}
+                        {q.type === "spr" && <span className="gw-qtag">Grid-in</span>}
+                      </span>
+                      <span className="gw-qstatus">
+                        {p?.last.marked && (
+                          <BookmarkIcon filled width={16} height={16} className="text-bb-red" role="img" aria-hidden={false} aria-label="Marked for review" />
+                        )}
+                        <StatusIcon p={p} size={18} />
+                      </span>
                     </button>
                     {isOpen && <Detail q={q} p={p} onPractice={() => start([q.id], "practice", `Question ${q.sourceNumber}`)} />}
                   </li>

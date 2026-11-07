@@ -241,41 +241,54 @@ export function Results({ bank, id, stored }: { bank: Question[]; id: string | n
                     <button
                       onClick={() => setOpen(open === key ? null : key)}
                       aria-expanded={open === key}
-                      className="group flex w-full items-center gap-3 py-3 text-left sm:gap-4"
+                      className="group flex min-h-11 w-full items-center gap-3 py-1.5 text-left sm:gap-4"
                     >
-                      <span className="w-11 shrink-0 font-semibold tabular-nums">
+                      <span className={`${fullExam ? "w-12" : "w-7"} shrink-0 text-sm font-semibold tabular-nums`}>
                         {fullExam ? `M${r.module}·` : ""}
                         {r.number}
                       </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate group-hover:underline">{r.q.skill}</span>
-                        <span className="block text-sm text-bb-muted">
-                          Yours{" "}
-                          {r.answer ? (
-                            <span className="text-bb-ink" dangerouslySetInnerHTML={{ __html: tex(answerTex(r.q, r.answer)) }} />
-                          ) : (
-                            "blank"
-                          )}
-                          {!r.correct && (
-                            <>
-                              {" · "}correct{" "}
-                              <span className="text-bb-ink" dangerouslySetInnerHTML={{ __html: tex(correctAnswerTex(r.q)) }} />
-                            </>
-                          )}
-                        </span>
+                      <span className="line-clamp-2 min-w-0 flex-1 text-[15px] leading-snug group-hover:underline sm:line-clamp-1">
+                        {r.q.skill}
                       </span>
-                      <span className="shrink-0 text-right text-sm tabular-nums text-bb-muted">
-                        {formatClock(r.timeMs / 1000)}
-                        {r.timeMs > PACE_MS && (
-                          <span className="block text-xs font-semibold text-bb-amber-ink" title="Slower than SAT pace">
-                            slow
+                      <span className="shrink-0 text-sm tabular-nums">
+                        <span className="sr-only">Your answer: </span>
+                        {r.answer ? (
+                          <span
+                            className={r.correct ? undefined : "text-bb-muted"}
+                            dangerouslySetInnerHTML={{ __html: tex(answerTex(r.q, r.answer)) }}
+                          />
+                        ) : (
+                          <span className="text-bb-muted">
+                            <span aria-hidden="true">—</span>
+                            <span className="sr-only">blank</span>
                           </span>
                         )}
+                        {!r.correct && (
+                          <>
+                            <span aria-hidden="true" className="mx-1.5 text-bb-muted">
+                              →
+                            </span>
+                            <span className="sr-only">, correct: </span>
+                            <span className="font-semibold" dangerouslySetInnerHTML={{ __html: tex(correctAnswerTex(r.q)) }} />
+                          </>
+                        )}
+                      </span>
+                      <span
+                        className={`w-12 shrink-0 text-right text-sm tabular-nums sm:w-[5.5rem] ${
+                          r.timeMs > PACE_MS ? "text-bb-amber-ink" : "text-bb-muted"
+                        }`}
+                        title={r.timeMs > PACE_MS ? "Slower than SAT pace" : undefined}
+                      >
+                        {r.timeMs > PACE_MS && (
+                          <span className="mr-1.5 hidden text-[11px] font-semibold uppercase sm:inline">slow</span>
+                        )}
+                        {r.timeMs > PACE_MS && <span className="sr-only sm:hidden">slow, </span>}
+                        {formatClock(r.timeMs / 1000)}
                       </span>
                       {r.correct ? (
-                        <CheckCircle width={22} height={22} className="shrink-0 text-bb-green" aria-label="Correct" />
+                        <CheckCircle width={20} height={20} className="shrink-0 text-bb-green" role="img" aria-hidden={false} aria-label="Correct" />
                       ) : (
-                        <XCircle width={22} height={22} className="shrink-0 text-bb-red" aria-label="Incorrect" />
+                        <XCircle width={20} height={20} className="shrink-0 text-bb-red" role="img" aria-hidden={false} aria-label="Incorrect" />
                       )}
                     </button>
                     {open === key && (

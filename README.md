@@ -114,7 +114,7 @@ Leave it unset to keep the app open.
   - Bottom bar: your name (entered on the start screen before an exam or timed set), a "Question X of Y" navigator, Back/Next.
   - A "Check Your Work" page at the end of each module.
 - **Practice mode** (`/practice`): click Check to see Correct/Incorrect, the correct answer, the explanation and your time on the question.
-- **Exam mode** (`/exam`): 2 modules × 22 questions × 35 minutes. No feedback during the test. Optional adaptive Module 2 (harder or easier based on Module 1). Auto-submits at 0:00. Results page with raw score, accuracy by domain and skill, and every question with its explanation.
+- **Exam mode** (`/exam`): 2 modules × 22 questions × 35 minutes. No feedback during the test. Optional adaptive Module 2 (harder or easier based on Module 1). Auto-submits at 0:00. Results page with raw score, accuracy by domain and skill, and every question as one row (skill, your answer → the correct one, time, result) that opens to its explanation.
 - **Grid-in checking** (`src/lib/grid.ts`) follows SAT entry rules:
   - Max 5 characters, or 6 with a negative sign.
   - Fractions and decimals both count, as do equivalent forms (3/4 = .75 = 0.75).
@@ -131,7 +131,9 @@ front. Pick a sheet to open that topic's list. **Sections** above the list's tit
 or the browser's Back) returns to the folders, and **All N questions** (`/bank?all`) skips them. Links
 with filters, such as Redo missed or a Stats "Practice" link, go straight to the list.
 
-The list view has two glass panels: the filters with the controls for starting a set, then the questions.
+The list view has two glass panels: the filters with the controls for starting a set, then the questions,
+one compact row each (number, skill, difficulty, Grid-in tag, status). Open a row to see the question,
+its answer and explanation, and your attempts.
 The filters are one row of menus: status
 (unanswered, incorrect, correct, marked for review), topic (domain and skill), type, and difficulty and
 source once there's more than one of them. Filters combine (OR inside a group, AND across groups) and

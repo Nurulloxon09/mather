@@ -1398,28 +1398,66 @@ a.gw-transaction:hover .gw-transaction-name strong { text-decoration: underline;
 .gw-qlist > li:first-child,
 .gw-qlist > li.gw-qhead,
 .gw-qlist > li.gw-qhead + li { border-top: 0; }
-.gw-qhead { padding: 26px 0 6px; font-size: 13px; font-weight: 600; color: var(--gw-muted); }
+.gw-qhead {
+  padding: 18px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--gw-muted);
+}
 .gw-qhead:first-child { padding-top: 0; }
+/* One line per question: number, skill, difficulty (and Grid-in), status. */
 .gw-qrow {
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 124px auto;
+  grid-template-areas: "num name meta status";
+  align-items: center;
+  column-gap: 12px;
   width: 100%;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 13px 0;
+  min-height: 44px;
+  padding: 6px 0;
   text-align: left;
 }
 .gw-qnum {
-  width: 34px;
-  height: 34px;
+  grid-area: num;
+  width: 28px;
+  height: 28px;
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--gw-transaction-surface);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--gw-muted);
 }
+.gw-qskill {
+  grid-area: name;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.gw-qmeta {
+  grid-area: meta;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--gw-muted);
+}
+.gw-qtag {
+  border-radius: 999px;
+  border: 1px solid var(--gw-line);
+  padding: 0 7px;
+  font-size: 11px;
+  line-height: 18px;
+}
+.gw-qstatus { grid-area: status; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.gw-qrow:hover .gw-qskill,
+.gw-qrow[aria-expanded="true"] .gw-qskill { color: var(--gw-accent); }
 .gw-qrow:hover .gw-qnum,
 .gw-qrow[aria-expanded="true"] .gw-qnum { background: var(--gw-income-surface); color: var(--gw-accent); }
 .gw-qdetail {
@@ -1430,7 +1468,13 @@ a.gw-transaction:hover .gw-transaction-name strong { text-decoration: underline;
 }
 @media (max-width: 700px) {
   .gw-qdetail { padding: 16px 14px; }
-  .gw-qrow { gap: 11px; }
+  /* Phones: the difficulty goes under the skill, so the skill keeps the width. */
+  .gw-qrow {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    grid-template-areas: "num name status" "num meta status";
+    column-gap: 10px;
+    row-gap: 1px;
+  }
 }
 @supports not (backdrop-filter: blur(1px)) {
   .gw-glass,
