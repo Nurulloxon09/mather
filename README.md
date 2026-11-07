@@ -22,6 +22,12 @@ the charts (green and red only for right and wrong). The menu is **Practice · S
 wordmark goes home. Pages follow the device's light or dark setting (`src/app/globals.css` holds both
 sets of colors). The test screen is the exception: it always looks like Bluebook, in light mode.
 
+The home page's two big actions, **Start full exam** (blue) and **Practice** (slate), are 3D cards
+(`src/components/ui/animated-3d-card.tsx`) that tilt toward the pointer and slide in a short label on
+hover. They're focusable and open with Enter or Space. The exam card is dimmed and inactive when the
+bank has fewer than 44 questions. The card uses `cn` from `src/lib/utils.ts`, the usual shadcn/ui
+class helper (clsx + tailwind-merge).
+
 ## Database
 
 Every attempt and finished test is saved to a database. Any of these works:
