@@ -3,9 +3,11 @@
 import { Suspense, use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BookOpen, Timer } from "lucide-react";
 import { AppHeader, PAGE } from "../AppHeader";
 import { DbNotice } from "../DbNotice";
 import { SessionList } from "../SessionList";
+import { Card3D } from "../ui/animated-3d-card";
 import { buildModule, shuffle } from "@/lib/select";
 import {
   clearActive,
@@ -45,46 +47,12 @@ function ResumeLine({ text, href, onDiscard }: { text: React.ReactNode; href: st
   );
 }
 
-/** One of the two big actions on the home page. */
-function Action({
-  title,
-  sub,
-  primary,
-  disabled,
-  href,
-  onClick,
-}: {
-  title: string;
-  sub: string;
-  primary?: boolean;
-  disabled?: boolean;
-  href?: string;
-  onClick?: () => void;
-}) {
-  const cls = `group flex w-full items-center gap-4 rounded-2xl px-6 py-6 text-left transition sm:py-8 ${
-    primary ? "bg-bb-blue text-white hover:bg-bb-blue-dark" : "bg-bb-subtle hover:bg-bb-bar"
-  } ${disabled ? "pointer-events-none opacity-45" : ""}`;
-  const body = (
-    <>
-      <span className="min-w-0 flex-1">
-        <span className="block text-xl font-bold sm:text-2xl">{title}</span>
-        <span className={`mt-1 block text-sm ${primary ? "text-white/80" : "text-bb-muted"}`}>{sub}</span>
-      </span>
-      <span aria-hidden className="text-2xl transition group-hover:translate-x-1">
-        →
-      </span>
-    </>
-  );
-  return href ? (
-    <Link href={href} className={cls}>
-      {body}
-    </Link>
-  ) : (
-    <button className={cls} onClick={onClick} disabled={disabled}>
-      {body}
-    </button>
-  );
-}
+/** The exam card is Bluebook blue; practice is the quieter slate. */
+const EXAM_GRADIENT = "from-[#4a64dc] via-[#324dc7] to-[#22348c]";
+
+/** The two big actions are tilting 3D cards. The tilt needs perspective on the parent. */
+const ACTION = "space-y-3 [perspective:1200px]";
+const CARD_FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bb-blue";
 
 function Switch({ on, onChange, label, hint }: { on: boolean; onChange: (on: boolean) => void; label: string; hint?: string }) {
   return (
@@ -141,6 +109,11 @@ export function Home({ bank, recent }: { bank: Question[]; recent: Promise<Recen
     setMounted(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
+
+  // The practice card navigates on click rather than being a <Link>, so warm the route by hand.
+  useEffect(() => {
+    router.prefetch("/bank");
+  }, [router]);
 
   const examPool = bank.filter((q) => !q.flag);
 
@@ -203,13 +176,18 @@ export function Home({ bank, recent }: { bank: Question[]; recent: Promise<Recen
         )}
 
         <div className="grid gap-x-5 gap-y-6 sm:grid-cols-2">
-          <div className="space-y-3">
-            <Action
-              primary
+          <div className={ACTION}>
+            <Card3D
               title="Start full exam"
-              sub="44 questions · 70 minutes"
+              description="44 questions · 70 minutes. Two 35-minute modules with the calculator and reference sheet, like test day."
+              icon={<Timer size={28} strokeWidth={1.75} />}
+              gradient={EXAM_GRADIENT}
+              size="sm"
+              variant="premium"
+              cta="Begin"
               disabled={examPool.length < 44}
               onClick={startExam}
+              className={CARD_FOCUS}
             />
             {examPool.length < 44 ? (
               <p className="text-sm text-bb-red">Needs at least 44 questions in the bank.</p>
@@ -222,8 +200,18 @@ export function Home({ bank, recent }: { bank: Question[]; recent: Promise<Recen
               />
             )}
           </div>
-          <div className="space-y-3">
-            <Action title="Practice" sub={`${bank.length} questions in 4 sections`} href="/bank" />
+          <div className={ACTION}>
+            <Card3D
+              title="Practice"
+              description={`${bank.length} questions in 4 sections: Algebra, Advanced Math, Geometry and Problem Solving.`}
+              icon={<BookOpen size={28} strokeWidth={1.75} />}
+              theme="primary"
+              size="sm"
+              variant="premium"
+              cta="Choose a section"
+              onClick={() => router.push("/bank")}
+              className={CARD_FOCUS}
+            />
             <div className="flex gap-5 text-sm">
               <button className="text-bb-muted hover:text-bb-ink" onClick={quickPractice}>
                 Quick 10
