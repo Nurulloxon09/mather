@@ -1,3 +1,4 @@
+import type { Goal } from "../plan";
 import type { Draft, UploadKind, UploadState } from "../uploads";
 
 // Browser calls to the upload and review endpoints.
@@ -54,6 +55,9 @@ export const api = {
   resolveFigure: (id: string, label: string, fileId: string, width: number) =>
     call<Draft>(`/api/questions/${id}/figures`, json("POST", { label, fileId, width })),
   solve: (id: string, model: string) => call<Draft>(`/api/questions/${id}/solve`, json("POST", { model })),
+  help: <T>(questionId: string, body: { kind: "hints" | "wrong" | "desmos"; answer?: string }) =>
+    call<T>(`/api/questions/${encodeURIComponent(questionId)}/help`, json("POST", body)),
+  saveGoal: (goal: Goal) => call<{ goal: Goal }>("/api/settings", json("PUT", { goal })),
 };
 
 /** Retry a call a few times on network errors and server hiccups (not on 4xx answers). */

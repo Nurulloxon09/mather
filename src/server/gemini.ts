@@ -1,5 +1,6 @@
 import "server-only";
 import { DIFFICULTIES, DOMAINS, SKILLS, type Difficulty, type Domain, type Question } from "@/lib/types";
+import type { DesmosStep, DesmosWay } from "@/lib/desmos";
 import { cleanAnswer, type PendingFigure } from "@/lib/uploads";
 
 // Gemini API (generativelanguage.googleapis.com) over plain fetch.
@@ -33,7 +34,7 @@ export class GeminiError extends Error {
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
 
 type Schema = {
-  type: "OBJECT" | "ARRAY" | "STRING" | "INTEGER" | "BOOLEAN";
+  type: "OBJECT" | "ARRAY" | "STRING" | "INTEGER" | "NUMBER" | "BOOLEAN";
   description?: string;
   enum?: string[];
   items?: Schema;
@@ -342,4 +343,147 @@ export async function solveQuestion(q: Question, images: { mime: string; data: s
   const out = (await generate(model, SOLVE_SYSTEM, parts, SOLVE_SCHEMA, 16000)) as { answer?: unknown; explanation?: unknown };
   const raw = asStr(out.answer);
   return { answer: cleanAnswer(raw, q.type) ?? raw.trim(), explanation: asStr(out.explanation).trim() };
+}
+
+// ---------- Help while practicing (hints, "why is my answer wrong", the Desmos way) ----------
+
+const bool = (description?: string): Schema => ({ type: "BOOLEAN", description });
+const numb = (description?: string): Schema => ({ type: "NUMBER", description });
+
+/** The question with its key and the book's explanation, for the tutor prompts. */
+function tutorParts(q: Question, images: { mime: string; data: string }[], extra: string[] = []): Part[] {
+  const lines = [`Question:\n${q.stem}`];
+  if (q.type === "mcq") (q.choices ?? []).forEach((c, i) => lines.push(`${"ABCD"[i]}) ${c}`));
+  else lines.push("(Grid-in: the student types the answer.)");
+  const key = q.type === "mcq" ? q.answer : (q.gridAnswers ?? []).join(" or ");
+  lines.push(`Correct answer: ${key}`);
+  if (q.explanation) lines.push(`Book explanation (for you, not to copy):\n${q.explanation}`);
+  lines.push(...extra);
+  const parts: Part[] = [{ text: lines.join("\n\n") }];
+  for (const img of images) parts.push({ inlineData: { mimeType: img.mime, data: img.data } });
+  return parts;
+}
+
+const HINTS_SYSTEM = `You are a friendly Digital SAT math tutor. A student is stuck on a question and asks for a hint.
+
+${MARKUP_RULES}
+
+Write exactly 3 hints, each one step further than the last:
+1. Which idea, formula or relationship the question needs, in plain words.
+2. The first concrete step, set up with the question's own numbers.
+3. The step just before the end, so the student only has to finish it.
+Never give the final answer, the correct choice letter, or the final value. Each hint is one or two short sentences, speaking to the student ("you").`;
+
+const HINTS_SCHEMA = obj({ hints: arr(str("One hint in the markup")) });
+
+export async function tutorHints(q: Question, images: { mime: string; data: string }[], model: string) {
+  const out = (await generate(model, HINTS_SYSTEM, tutorParts(q, images), HINTS_SCHEMA, 8000)) as { hints?: unknown };
+  const hints = (Array.isArray(out.hints) ? out.hints : []).map(asStr).map((h) => h.trim()).filter(Boolean).slice(0, 3);
+  if (!hints.length) throw new GeminiError("bad-output", "Gemini didn't return any hints");
+  return { hints };
+}
+
+const WRONG_SYSTEM = `You are a friendly Digital SAT math tutor. A student answered a question and got it wrong.
+
+${MARKUP_RULES}
+
+Explain, speaking to the student ("you"):
+- The most likely mistake that leads to their exact answer (for example: solved for the wrong quantity, dropped a negative sign, used the diameter as the radius, picked the y-value instead of x). Work out what reasoning produces their answer.
+- Then, in one or two sentences, the key step that gets to the correct answer.
+Two to five sentences in total. If no specific mistake leads to their answer, say what their answer would mean and why it doesn't fit the question.`;
+
+const WRONG_SCHEMA = obj({ explanation: str("Why the answer is wrong, in the markup") });
+
+export async function tutorWhyWrong(q: Question, answer: string, images: { mime: string; data: string }[], model: string) {
+  const mine = q.type === "mcq" ? `${answer}) ${q.choices?.["ABCD".indexOf(answer)] ?? ""}` : answer;
+  const parts = tutorParts(q, images, [`The student answered: ${mine}`]);
+  const out = (await generate(model, WRONG_SYSTEM, parts, WRONG_SCHEMA, 8000)) as { explanation?: unknown };
+  const text = asStr(out.explanation).trim();
+  if (!text) throw new GeminiError("bad-output", "Gemini didn't return an explanation");
+  return { explanation: text };
+}
+
+const DESMOS_SYSTEM = `You solve Digital SAT math questions with the Desmos graphing calculator. Write a walkthrough that types expressions into Desmos one at a time, with the real numbers from the question, the way a strong student would on test day.
+
+Each step has:
+- "say": one short sentence (at most 140 characters) telling the student what is being typed and why, or what to look at. Math in $...$ is allowed.
+- "latex": exactly one Desmos expression line, or "" for a look-only step.
+- "table": only for data questions: columns with a header such as x_{1} or y_{1} and the values as plain numbers. Otherwise no columns.
+- "answerStep": true on the one step whose result gives the answer. Its "say" tells the student exactly where to look or click and what they'll see, e.g. "Click where the lines cross: (4, 7), so x = 4".
+
+Desmos LaTeX:
+- Fractions \\frac{a}{b}, powers x^{2}, roots \\sqrt{x} and \\sqrt[3]{x}, multiplication 2x or 2\\cdot3, absolute value \\left|x\\right|, parentheses \\left( \\right), \\le and \\ge, \\pi.
+- Graph with x and y. Name functions f(x)=... and evaluate them as f(3). A bare number expression such as 3.3\\cdot\\frac{4}{3} shows its value. Lists [1,2,3] with \\operatorname{mean}(L), \\operatorname{median}(L), \\operatorname{stdev}(L). Regression: y_{1}\\sim mx_{1}+b after a table.
+- A letter other than x and y on its own becomes a slider; define constants first (a=5) when you need them.
+- No words, no \\text, no units, no dollar signs, no degree symbols.
+
+Good routes: graph each side of an equation (y=left, y=right) and read the x of the crossing; graph a system and read the intersection; graph a quadratic and read its vertex or x-intercepts; define f(x) and evaluate; compute a number expression; regression for tables; list statistics; graph each answer choice against the question's graph.
+
+Also give "view", a graph window (left, right, bottom, top) that shows the important points, and "answer": the final answer the walkthrough reaches (the choice letter, or the grid-in value). It must match the correct answer given.
+Use 2 to 6 steps. Set "useful" to false (with no steps) when Desmos doesn't make this question easier, for example a question about what a number in a model means.`;
+
+const DESMOS_SCHEMA = obj({
+  useful: bool("Whether Desmos makes this question easier"),
+  steps: arr(
+    obj({
+      say: str("What is typed and why, one short sentence"),
+      latex: str("One Desmos expression, or empty"),
+      table: obj({ columns: arr(obj({ header: str(), values: arr(str()) })) }),
+      answerStep: bool("True on the step that shows the answer"),
+    }),
+  ),
+  view: obj({ left: numb(), right: numb(), bottom: numb(), top: numb() }),
+  answer: str("Choice letter, or the grid-in value"),
+});
+
+
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
+
+function cleanLatex(v: unknown) {
+  return asStr(v)
+    .trim()
+    .replace(/^\$+|\$+$/g, "")
+    .replace(/\\dfrac/g, "\\frac")
+    .slice(0, 400);
+}
+
+function cleanDesmos(raw: Record<string, unknown>, q: Question): DesmosWay {
+  const steps: DesmosStep[] = (Array.isArray(raw.steps) ? raw.steps : []).slice(0, 8).flatMap((s): DesmosStep[] => {
+    if (!s || typeof s !== "object") return [];
+    const o = s as Record<string, unknown>;
+    const cols = ((o.table as Record<string, unknown> | undefined)?.columns ?? []) as unknown[];
+    const table = (Array.isArray(cols) ? cols : [])
+      .map((c) => c as Record<string, unknown>)
+      .map((c) => ({ header: cleanLatex(c.header), values: (Array.isArray(c.values) ? c.values : []).map(cleanLatex).slice(0, 40) }))
+      .filter((c) => c.header && c.values.length)
+      .slice(0, 4);
+    const step: DesmosStep = { say: asStr(o.say).trim().slice(0, 240), latex: cleanLatex(o.latex) };
+    if (table.length) step.table = table;
+    if (o.answerStep === true) step.answerStep = true;
+    return step.say || step.latex || step.table ? [step] : [];
+  });
+  const v = (raw.view ?? {}) as Record<string, unknown>;
+  const view = { left: num(v.left), right: num(v.right), bottom: num(v.bottom), top: num(v.top) };
+  const okView = Object.values(view).every(Number.isFinite) && view.left < view.right && view.bottom < view.top;
+  const answer = cleanAnswer(asStr(raw.answer), q.type) ?? asStr(raw.answer).trim();
+  return { useful: raw.useful === true && steps.length > 0, steps, view: okView ? view : undefined, answer };
+}
+
+export async function tutorDesmos(
+  q: Question,
+  images: { mime: string; data: string }[],
+  model: string,
+  check: (answer: string) => boolean,
+): Promise<DesmosWay> {
+  let parts = tutorParts(q, images);
+  for (let round = 0; round < 2; round++) {
+    const raw = (await generate(model, DESMOS_SYSTEM, parts, DESMOS_SCHEMA, 16000)) as Record<string, unknown>;
+    const way = cleanDesmos(raw && typeof raw === "object" ? raw : {}, q);
+    if (!way.useful || check(way.answer)) return way;
+    // The walkthrough reached the wrong answer: one more try, told so.
+    parts = tutorParts(q, images, [
+      `A previous walkthrough reached ${way.answer}, which is wrong. Redo it so it reaches the correct answer.`,
+    ]);
+  }
+  return { useful: false, steps: [], answer: "", unverified: true };
 }

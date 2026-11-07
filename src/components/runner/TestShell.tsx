@@ -1,12 +1,25 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { BottomBar } from "../bluebook/BottomBar";
 import { Calculator, preloadDesmos } from "../bluebook/Calculator";
 import type { GridCell } from "../bluebook/QuestionGrid";
 import { ReferenceSheet } from "../bluebook/ReferenceSheet";
 import { TopBar, type MoreItem } from "../bluebook/TopBar";
+import type { DesmosWay } from "@/lib/desmos";
+
+type DesmosHelp = {
+  /** Opens the calculator and types the walkthrough into it. */
+  play: (way: DesmosWay, answerLatex: string) => void;
+};
+
+const DesmosHelpContext = createContext<DesmosHelp | null>(null);
+
+/** For the question area: plays a "Desmos way" in the test's calculator. */
+export function useDesmosHelp() {
+  return useContext(DesmosHelpContext);
+}
 
 /** Bluebook frame: top bar, scrollable body, bottom bar and the floating tools. */
 export function TestShell({
@@ -48,8 +61,19 @@ export function TestShell({
 }) {
   const [calcOpen, setCalcOpen] = useState(false);
   const [refOpen, setRefOpen] = useState(false);
+  const [walkthrough, setWalkthrough] = useState<{ way: DesmosWay; answerLatex: string; key: number } | null>(null);
 
   useEffect(() => preloadDesmos(), []);
+
+  const play = useCallback((way: DesmosWay, answerLatex: string) => {
+    setWalkthrough((w) => ({ way, answerLatex, key: (w?.key ?? 0) + 1 }));
+    setCalcOpen(true);
+  }, []);
+  const desmosHelp = useMemo(() => ({ play }), [play]);
+  const closeCalc = () => {
+    setCalcOpen(false);
+    setWalkthrough(null);
+  };
 
   return (
     <div className="bb-light flex h-dvh flex-col overflow-hidden bg-white">
@@ -61,15 +85,22 @@ export function TestShell({
         onToggleTimer={onToggleTimer}
         warning={warning}
         calcOpen={calcOpen}
-        onCalc={() => setCalcOpen((v) => !v)}
+        onCalc={() => (calcOpen ? closeCalc() : setCalcOpen(true))}
         refOpen={refOpen}
         onRef={() => setRefOpen((v) => !v)}
         moreItems={moreItems}
       />
       {/* The calculator docks on the left and the question moves over, so neither covers the other. */}
       <div className="relative flex min-h-0 flex-1">
-        <Calculator open={calcOpen} onClose={() => setCalcOpen(false)} />
-        <main className="relative min-h-0 min-w-0 flex-1">{children}</main>
+        <Calculator
+          open={calcOpen}
+          onClose={closeCalc}
+          walkthrough={walkthrough}
+          onWalkthroughEnd={() => setWalkthrough(null)}
+        />
+        <main className="relative min-h-0 min-w-0 flex-1">
+          <DesmosHelpContext.Provider value={desmosHelp}>{children}</DesmosHelpContext.Provider>
+        </main>
       </div>
       <BottomBar
         name={name}

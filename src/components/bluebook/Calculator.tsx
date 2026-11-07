@@ -1,13 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { DesmosWay } from "@/lib/desmos";
+import { DesmosWalkthrough } from "./DesmosWalkthrough";
 import { CloseIcon, CollapseIcon, ExpandIcon } from "./icons";
 
 // Desmos publishes a demo key for development; set NEXT_PUBLIC_DESMOS_API_KEY to use your own.
 const API_KEY = process.env.NEXT_PUBLIC_DESMOS_API_KEY || "dcb31709b452b1cf9dc26972add0fda6";
 const SRC = `https://www.desmos.com/api/v1.11/calculator.js?apiKey=${API_KEY}`;
 
-type DesmosCalc = { destroy(): void; resize(): void; focusFirstExpression?(): void };
+/** The parts of the Desmos API the app uses (https://www.desmos.com/api/v1.11/docs). */
+export type DesmosCalc = {
+  destroy(): void;
+  resize(): void;
+  focusFirstExpression?(): void;
+  setExpression(expr: Record<string, unknown>): void;
+  removeExpression(expr: { id: string }): void;
+  getExpressions(): { id?: string; type?: string; latex?: string }[];
+  setBlank(): void;
+  getState(): unknown;
+  setState(state: unknown): void;
+  setMathBounds(bounds: { left: number; right: number; bottom: number; top: number }): void;
+};
 type DesmosGlobal = {
   GraphingCalculator(el: HTMLElement, opts: Record<string, unknown>): DesmosCalc;
 };
@@ -65,11 +79,24 @@ function savedWidth() {
  * moves over instead of being covered; the right edge drags to resize (remembered), Expand makes
  * it wide. Stays mounted while closed so graphs survive between questions. Full screen on phones.
  */
-export function Calculator({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function Calculator({
+  open,
+  onClose,
+  walkthrough,
+  onWalkthroughEnd,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** A "Desmos way" to type into the calculator, with the answer to show at the end. */
+  walkthrough?: { way: DesmosWay; answerLatex: string; key: number } | null;
+  onWalkthroughEnd?: () => void;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLElement>(null);
   const calc = useRef<DesmosCalc | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  /** The same calculator as `calc`, for rendering the walkthrough (refs can't be read in render). */
+  const [instance, setInstance] = useState<DesmosCalc | null>(null);
   const [width, setWidth] = useState(DEFAULT_W);
   const [expanded, setExpanded] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -98,6 +125,7 @@ export function Calculator({ open, onClose }: { open: boolean; onClose: () => vo
           folders: false,
           links: false,
         });
+        setInstance(calc.current);
         setStatus("ready");
       })
       .catch(() => !cancelled && setStatus("error"));
@@ -106,10 +134,10 @@ export function Calculator({ open, onClose }: { open: boolean; onClose: () => vo
     };
   }, [open]);
 
-  // Ready to type as soon as it opens.
+  // Ready to type as soon as it opens (unless a walkthrough is about to type for you).
   useEffect(() => {
-    if (open && status === "ready") calc.current?.focusFirstExpression?.();
-  }, [open, status]);
+    if (open && status === "ready" && !walkthrough) calc.current?.focusFirstExpression?.();
+  }, [open, status, walkthrough]);
 
   // Keep Desmos sized to the panel.
   useEffect(() => {
@@ -195,6 +223,15 @@ export function Calculator({ open, onClose }: { open: boolean; onClose: () => vo
         {/* While resizing, keep Desmos from catching the pointer. */}
         {dragging && <div className="absolute inset-0 cursor-col-resize" />}
       </div>
+      {walkthrough && status === "ready" && instance && (
+        <DesmosWalkthrough
+          key={walkthrough.key}
+          calc={instance}
+          way={walkthrough.way}
+          answerLatex={walkthrough.answerLatex}
+          onClose={() => onWalkthroughEnd?.()}
+        />
+      )}
 
       {/* The right edge: drag, or focus it and use the arrow keys. Double-click resets the width. */}
       <div

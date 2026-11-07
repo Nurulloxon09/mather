@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { entryToTex, isAllowedPartial } from "@/lib/grid";
 import { tex } from "@/lib/rich";
 import { LETTERS, type ChoiceLetter, type ItemState, type Question } from "@/lib/types";
@@ -173,6 +174,7 @@ export function QuestionView({
   onCross,
   locked = false,
   reveal = null,
+  footer,
 }: {
   q: Question;
   number: number;
@@ -184,6 +186,8 @@ export function QuestionView({
   onCross: (l: ChoiceLetter) => void;
   locked?: boolean;
   reveal?: Reveal;
+  /** Shown under the answer area (practice help). */
+  footer?: ReactNode;
 }) {
   const header = (
     <QuestionHeader
@@ -217,6 +221,7 @@ export function QuestionView({
             />
           </div>
         )}
+        {footer}
       </div>
     </div>
   );

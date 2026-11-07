@@ -158,15 +158,17 @@ export async function getProgress(): Promise<ProgressMap | null> {
   return addAttempts({}, res.rows.map(toAttempt));
 }
 
-export async function listSessions(limit = 1000): Promise<SessionSummary[] | null> {
+export async function listSessions(limit = 1000, examsOnly = false): Promise<SessionSummary[] | null> {
   const db = await getDb();
   if (!db) return null;
+  const custom = db.json("s.data", "custom");
   const res = await db.execute({
     sql: `SELECT s.id, s.mode, s.title, s.finished_at, s.correct, s.total,
-            ${db.json("s.data", "custom")} AS custom, ${db.json("s.data", "route")} AS route,
+            ${custom} AS custom, ${db.json("s.data", "route")} AS route,
             COALESCE(a.t, 0) AS time_ms
           FROM sessions s
           LEFT JOIN (SELECT session_id, SUM(time_ms) AS t FROM attempts GROUP BY session_id) a ON a.session_id = s.id
+          ${examsOnly ? `WHERE s.mode = 'exam' AND ${custom} IS NULL` : ""}
           ORDER BY s.finished_at DESC LIMIT ?`,
     args: [limit],
   });
@@ -189,6 +191,11 @@ export async function listSessions(limit = 1000): Promise<SessionSummary[] | nul
       estimate: kind === "exam" ? estimateScore(correct, total, route) : undefined,
     };
   });
+}
+
+/** The most recent full exams (not timed sets), newest first. */
+export function listExams(limit: number) {
+  return listSessions(limit, true);
 }
 
 /** Every attempt in the compact form the stats page uses. */

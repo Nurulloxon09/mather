@@ -21,10 +21,20 @@ import {
   type Session,
 } from "@/lib/session";
 import { mergeSessions, type SessionSummary } from "@/lib/history";
+import type { ProgressMap } from "@/lib/attempts";
+import type { Goal } from "@/lib/plan";
 import type { Question } from "@/lib/types";
 import type { DbStatus } from "@/server/db";
+import { Plan } from "./Plan";
 
-export type RecentData = { sessions: SessionSummary[] | null; db: DbStatus; error: boolean };
+export type RecentData = {
+  sessions: SessionSummary[] | null;
+  progress: ProgressMap | null;
+  latestExam: SessionSummary | null;
+  goal: Goal | null;
+  db: DbStatus;
+  error: boolean;
+};
 
 function answered(s: Session) {
   return sessionModules(s).reduce((n, m) => n + m.questionIds.filter((id) => m.items[id]?.answer).length, 0);
@@ -78,6 +88,21 @@ function Notice({ recent }: { recent: Promise<RecentData> }) {
   return <DbNotice status={db} error={error} />;
 }
 
+function PlanData({
+  recent,
+  bank,
+  byId,
+  onStart,
+}: {
+  recent: Promise<RecentData>;
+  bank: Question[];
+  byId: Map<string, Question>;
+  onStart: (title: string, ids: string[]) => void;
+}) {
+  const { progress, latestExam, goal } = use(recent);
+  return <Plan bank={bank} byId={byId} progress={progress} latestExam={latestExam} serverGoal={goal} onStart={onStart} />;
+}
+
 function Recent({ recent, byId }: { recent: Promise<RecentData>; byId: Map<string, Question> }) {
   const { sessions } = use(recent);
   const [local, setLocal] = useState<Session[]>([]);
@@ -117,13 +142,14 @@ export function Home({ bank, recent }: { bank: Question[]; recent: Promise<Recen
 
   const examPool = bank.filter((q) => !q.flag);
 
-  const quickPractice = () => {
+  const startPractice = (title: string, ids: string[]) => {
     if (activePractice && !confirm(`"${sessionLabel(activePractice)}" is still in progress. Start a new set instead?`)) {
       return;
     }
-    saveSession(newPracticeSession("Quick 10", shuffle(bank).slice(0, 10).map((q) => q.id)));
+    saveSession(newPracticeSession(title, ids));
     router.push("/practice");
   };
+  const quickPractice = () => startPractice("Quick 10", shuffle(bank).slice(0, 10).map((q) => q.id));
 
   const startExam = () => {
     if (activeExam && !confirm(`"${sessionLabel(activeExam)}" is still in progress. Start a new exam instead?`)) {
@@ -222,6 +248,10 @@ export function Home({ bank, recent }: { bank: Question[]; recent: Promise<Recen
             </div>
           </div>
         </div>
+
+        <Suspense fallback={<div className="h-[220px]" aria-hidden="true" />}>
+          <PlanData recent={recent} bank={bank} byId={byId} onStart={startPractice} />
+        </Suspense>
 
         <section>
           <div className="mb-2 flex items-baseline">

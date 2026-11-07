@@ -4,12 +4,25 @@ import { AppHeader } from "@/components/AppHeader";
 import { Home, type RecentData } from "@/components/home/Home";
 import { getBank } from "@/server/bank";
 import { dbStatus } from "@/server/db";
-import { listSessions, orNull } from "@/server/progress";
+import { getGoal } from "@/server/help";
+import { getProgress, listExams, listSessions, orNull } from "@/server/progress";
 
 async function loadRecent(): Promise<RecentData> {
   await connection();
-  const { data, error } = await orNull(() => listSessions(8));
-  return { sessions: data, db: dbStatus(), error };
+  const [recent, progress, exams, goal] = await Promise.all([
+    orNull(() => listSessions(8)),
+    orNull(getProgress),
+    orNull(() => listExams(1)),
+    orNull(getGoal),
+  ]);
+  return {
+    sessions: recent.data,
+    progress: progress.data,
+    latestExam: exams.data?.[0] ?? null,
+    goal: goal.data,
+    db: dbStatus(),
+    error: recent.error || progress.error,
+  };
 }
 
 export default function Page() {

@@ -146,6 +146,22 @@ const MIGRATIONS: string[][] = [
     `CREATE INDEX IF NOT EXISTS uq_upload ON uploaded_questions (upload_id, number)`,
     `CREATE INDEX IF NOT EXISTS uq_status ON uploaded_questions (status)`,
   ],
+  // Practice help from the AI (hints, why an answer is wrong, the Desmos way), kept so each is
+  // asked for once; and small app settings such as the score goal.
+  [
+    `CREATE TABLE IF NOT EXISTS ai_help (
+      id TEXT PRIMARY KEY,
+      question_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      data TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
+  ],
 ];
 
 const VERSION_SQL = `INSERT INTO meta (key, value) VALUES ('schema_version', ?)

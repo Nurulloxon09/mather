@@ -21,6 +21,7 @@ import {
 } from "@/lib/session";
 import { tex } from "@/lib/rich";
 import type { Question } from "@/lib/types";
+import { DesmosButton, PracticeHelp, WhyWrong } from "./PracticeHelp";
 import { CenterMessage, Modal, TestShell } from "./TestShell";
 
 function ResultModal({
@@ -67,6 +68,7 @@ function ResultModal({
             <span dangerouslySetInnerHTML={{ __html: tex(correctAnswerTex(q)) }} />
           </div>
         </div>
+        {!ok && answer && <WhyWrong q={q} answer={answer} />}
         <div>
           <h3 className="mb-2 text-[15px] font-bold">Explanation</h3>
           {q.explanation ? (
@@ -76,7 +78,10 @@ function ResultModal({
           )}
         </div>
       </div>
-      <div className="flex justify-end gap-3 border-t border-bb-line px-6 py-4">
+      <div className="flex flex-wrap items-start justify-end gap-3 border-t border-bb-line px-6 py-4">
+        <div className="mr-auto">
+          <DesmosButton q={q} onStart={onClose} />
+        </div>
         <button className="bb-btn bb-btn-outline" onClick={onClose}>
           Review question
         </button>
@@ -209,6 +214,7 @@ export function PracticeRunner({ bank }: { bank: Question[] }) {
           onCross={(l) => updateModule((x) => toggleCross(x, l))}
           locked={!!item.checked}
           reveal={item.checked && q.type === "mcq" ? { correctLetter: q.answer } : null}
+          footer={<PracticeHelp q={q} item={item} />}
         />
       ) : (
         <CenterMessage title="Question not found">This question was removed from the bank.</CenterMessage>

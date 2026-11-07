@@ -8,7 +8,7 @@ same layout, tools, timer and pressure. Single user, no accounts.
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm test           # grid-in answer rules + question bank checks
+npm test           # grid-in rules, progress, stats, review schedule, Desmos typing, data checks
 npm run build      # production build
 ```
 
@@ -91,6 +91,9 @@ Published questions show up in the bank, practice sets and exams like the built-
 2. In Vercel → Settings → Environment Variables, add `GEMINI_API_KEY`, then redeploy.
    Locally, put it in `.env.local`.
 
+The same key powers the practice help (hints, "Why is my answer wrong?" and the Desmos way; see
+Progress). Without it those buttons explain that the key is missing.
+
 The default model is `gemini-flash-latest` (set `GEMINI_MODEL` to use another). The upload screen also
 offers `gemini-flash-lite-latest`, which allows many more requests per day on the free tier; switch to it
 if the daily limit runs out mid-book.
@@ -172,6 +175,37 @@ Click a question to see its skill, the full question, the answer and explanation
 - **Results** pages lead with the score (and the estimate for full exams), then the questions you missed;
   the breakdown by domain and skill is folded below. Slow questions are marked, and there are links to
   practice the missed ones or drill the skill missed most.
+
+### Your plan (home page, `src/components/home/Plan.tsx`)
+
+- **Goal**: a target score, the test date (optional) and questions per day. It shows the days to test day
+  and how the latest full exam compares with the target. Stored in the database (`settings` table) so
+  every device shares it, with a copy in the browser; the newer one wins.
+- **Today**: a ring for today's answers against the daily goal, and the two skills to work on (lowest
+  accuracy with at least 3 answers, then skills not tried), each linking to its missed and unanswered
+  questions.
+- **Review** (`src/lib/review.ts`): a missed question comes back 1 day later. Right on its review day, it
+  comes back after 3 days, then 7; right on the 7-day review and it's cleared. A miss starts it over.
+  Right answers before the review day (redoing a set straight after its results) don't count, since the
+  answer is still fresh. The schedule is worked out from the saved attempts, so nothing extra is stored.
+  **Start review** opens a practice set of what's due (25 at a time).
+
+### Help while practicing (`src/components/runner/PracticeHelp.tsx`)
+
+Practice sets (not exams or timed sets) have AI help under the question, from Gemini, using the
+question, its answer key and the book's explanation. Each answer is asked for once and kept in the
+`ai_help` table, so a question costs one request however often it's opened (an edited question asks
+again). When the main model is out of requests, the lighter one is used.
+
+- **Hint**: up to three hints, one at a time, each a step further, never giving the answer.
+- **Why is my answer wrong?** (after a wrong answer, also in the result popup): the likely mistake behind
+  your exact answer, then the key step to the right one.
+- **Show the Desmos way** (after checking): opens the calculator and types the solution into it,
+  keystroke by keystroke, with the question's real numbers: a fraction appears empty and fills in,
+  parentheses close themselves, tables fill cell by cell (`src/lib/desmos.ts`). A caption says what each
+  step types and why, and the step that shows the answer is highlighted. Back, Pause and Next step
+  through it, Replay starts over, and **Restore my graph** puts back what was on the calculator. The
+  walkthrough's answer is checked against the key; if it's wrong after a retry, it isn't shown.
 
 **Score estimate** (`src/lib/score.ts`): College Board doesn't publish a raw-to-scaled table for the
 adaptive test, so the estimate follows typical Bluebook practice-test ranges, scaled to 44 questions.
