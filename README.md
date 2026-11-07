@@ -28,6 +28,14 @@ hover. They're focusable and open with Enter or Space. The exam card is dimmed a
 bank has fewer than 44 questions. The card uses `cn` from `src/lib/utils.ts`, the usual shadcn/ui
 class helper (clsx + tailwind-merge).
 
+**Practice** and **Stats** are frosted-glass dashboards (`src/components/ui/adjustable-glass-dashboard.tsx`,
+adapted from the 21st.dev Adjustable Glass Dashboard, wrapped for the app by `src/components/AppGlass.tsx`):
+a glass top bar carrying the menu, a side rail and bottom dock (tabs on a phone, arrow keys move between
+them) for the page's views, and glass panels over soft color drawn in CSS. **Adjust glass** changes the
+blur, opacity, saturation, edge light and tint; the look is shared by both pages and remembered in the
+browser. The colors come from the app's tokens (`.bb-glass` in `globals.css`), so the glass follows light
+and dark mode. The component also accepts a `backgroundImage` for a photo behind the glass.
+
 ## Database
 
 Every attempt and finished test is saved to a database. Any of these works:
@@ -115,14 +123,16 @@ Leave it unset to keep the app open.
 
 ## Question bank (Phase 2)
 
-`/bank` (**Practice** in the menu) opens on the four sections, **Algebra, Advanced Math, Geometry and
-Problem Solving**, each drawn as a glass folder (`src/components/ui/glass-folder-cards.tsx`). Hover one
-and its glass leans forward. Click it, or press Enter, and its sheets fan out: the biggest topics, with
-"All N topics" at the front. Pick a sheet to open that topic's list. **Sections** at the top of the list
-(or the browser's Back) returns to the folders, and **All N questions** (`/bank?all`) skips them. Links
+`/bank` (**Practice** in the menu) is a glass dashboard (see Look) with two views, **Sections** and
+**Questions**. It opens on the four sections, **Algebra, Advanced Math, Geometry and Problem Solving**,
+each drawn as a glass folder (`src/components/ui/glass-folder-cards.tsx`). Hover one and its glass leans
+forward. Click it, or press Enter, and its sheets fan out: the biggest topics, with "All N topics" at the
+front. Pick a sheet to open that topic's list. **Sections** above the list's title (or the rail, the dock,
+or the browser's Back) returns to the folders, and **All N questions** (`/bank?all`) skips them. Links
 with filters, such as Redo missed or a Stats "Practice" link, go straight to the list.
 
-The list has one row of filter menus: status
+The list view has two glass panels: the filters with the controls for starting a set, then the questions.
+The filters are one row of menus: status
 (unanswered, incorrect, correct, marked for review), topic (domain and skill), type, and difficulty and
 source once there's more than one of them. Filters combine (OR inside a group, AND across groups) and
 live in the URL, so `/bank?status=incorrect&domain=Advanced+Math&difficulty=Hard` is a
@@ -143,11 +153,9 @@ Click a question to see its skill, the full question, the answer and explanation
 
 ## Progress (Phase 4)
 
-- **Stats** (`/stats`) is a frosted-glass dashboard (`src/components/ui/adjustable-glass-dashboard.tsx`,
-  adapted from the 21st.dev Adjustable Glass Dashboard; the stats themselves are in
-  `src/components/stats/StatsView.tsx`). Its top bar carries the menu. It has four views, switched from the
-  side rail, the bottom dock, or the tabs on a phone (arrow keys move between them). One period filter
-  (7 days, 30 days, all time) applies to all of them:
+- **Stats** (`/stats`) is a glass dashboard (see Look; the stats themselves are in
+  `src/components/stats/StatsView.tsx`) with four views. One period filter (7 days, 30 days, all time)
+  applies to all of them:
   - **Overview**: estimated SAT Math score from the latest full exam, with its range and the change since
     the exam before; correct and missed answers per day or week; the four most recent sessions; the
     weakest skills (at least 3 answers each), each with a "Practice" link to the bank filtered to that
@@ -159,10 +167,6 @@ Click a question to see its skill, the full question, the answer and explanation
   - **Reports**: answered, accuracy and time per question; accuracy over time or the score estimate per
     exam; where the misses are by section; days practiced and streak, questions not tried yet, answers
     slower than pace; practice vs tests, difficulty, and the slowest questions.
-  - **Adjust glass** changes the blur, opacity, saturation, edge light and tint of the panels, remembered
-    in the browser. The colors come from the app's tokens (`.bb-glass` in `globals.css`), so it follows
-    light and dark mode; the backdrop is soft color drawn in CSS. The component also accepts a
-    `backgroundImage` for a photo behind the glass.
 - **Results** pages lead with the score (and the estimate for full exams), then the questions you missed;
   the breakdown by domain and skill is folded below. Slow questions are marked, and there are links to
   practice the missed ones or drill the skill missed most.

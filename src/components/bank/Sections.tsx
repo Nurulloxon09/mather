@@ -88,30 +88,18 @@ export function Sections({
   bank,
   progress,
   onPick,
-  onAll,
 }: {
   bank: Question[];
   progress: ProgressMap;
   onPick: (pick: SectionPick) => void;
-  onAll: () => void;
 }) {
   const dark = useDark();
   const { ref, width } = useFolderWidth();
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
-        <div>
-          <h1 className="text-2xl font-bold">Practice</h1>
-          <p className="mt-1 text-sm text-bb-muted">Open a section, then pick a topic.</p>
-        </div>
-        <button onClick={onAll} className="text-sm font-semibold text-bb-muted hover:text-bb-ink">
-          All {bank.length} questions →
-        </button>
-      </div>
-
       {/* Open folders fan their sheets upward, so rows keep room above them. */}
-      <ul className="mt-12 grid grid-cols-1 justify-items-center gap-x-10 gap-y-12 pb-4 sm:grid-cols-2">
+      <ul className="mt-10 grid grid-cols-1 justify-items-center gap-x-10 gap-y-12 pb-4 sm:grid-cols-2">
         {SECTIONS.map(({ domain, label, art }, i) => {
           const { files, picks, total } = sectionFiles(domain, art, bank);
           const done = bank.filter((q) => q.domain === domain && progress[q.id]).length;

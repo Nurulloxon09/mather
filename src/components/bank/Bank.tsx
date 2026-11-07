@@ -3,12 +3,13 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AppHeader, PAGE as WIDTH } from "../AppHeader";
+import { ArrowRight, ChevronLeft, LayoutGrid, ListChecks } from "lucide-react";
+import { AppGlass } from "../AppGlass";
 import { BookmarkIcon, CheckCircle, XCircle } from "../bluebook/icons";
 import { formatClock } from "../bluebook/TopBar";
 import { LocalDate } from "../LocalDate";
 import { Rich, RichInline } from "../Rich";
-import { Segmented } from "../Segmented";
+import { GlassSegment, type GlassView } from "../ui/adjustable-glass-dashboard";
 import { Sections, type SectionPick } from "./Sections";
 import { hasStatus, type ProgressMap, type QuestionProgress, type Status } from "@/lib/attempts";
 import { formatRanges, inRanges, parseNumberRanges } from "@/lib/numbers";
@@ -144,41 +145,28 @@ function FilterMenu({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="true"
-        className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${
-          picked.length ? "bg-bb-ink text-bb-bg" : "bg-bb-subtle hover:bg-bb-bar"
-        }`}
+        className={`gw-chip ${picked.length ? "is-on" : ""}`}
       >
         <span className="max-w-[14rem] truncate">
           {picked.length === 1 ? picked[0].label : picked.length ? `${label} · ${picked.length}` : label}
         </span>
-        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className={`transition ${open ? "rotate-180" : ""}`}>
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
           <path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-[min(70vh,28rem)] overflow-y-auto rounded-xl border border-bb-hair bg-bb-surface p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] sm:right-auto sm:w-80">
+        <div className="gw-menu">
           {options.map((o) => (
             <label
               key={o.value}
-              className={`flex cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-sm leading-snug hover:bg-bb-subtle ${
-                o.indent ? "pl-8" : ""
-              } ${!o.count && !o.on ? "text-bb-faint" : ""}`}
+              className={`${o.indent ? "is-indent" : ""} ${o.strong ? "is-strong" : ""} ${!o.count && !o.on ? "is-empty" : ""}`}
             >
-              <input
-                type="checkbox"
-                checked={o.on}
-                onChange={() => onToggle(o.value)}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--bb-ink)]"
-              />
-              <span className={`flex-1 ${o.strong ? "font-semibold" : ""}`}>{o.label}</span>
-              <span className="tabular-nums text-bb-muted">{o.count}</span>
+              <input type="checkbox" checked={o.on} onChange={() => onToggle(o.value)} />
+              <span>{o.label}</span>
+              <span className="tabular-nums">{o.count}</span>
             </label>
           ))}
-          {picked.length > 0 && (
-            <button onClick={onClear} className="mt-1 w-full rounded-lg px-2.5 py-2 text-left text-sm text-bb-muted hover:bg-bb-subtle hover:text-bb-ink">
-              Clear
-            </button>
-          )}
+          {picked.length > 0 && <button onClick={onClear}>Clear</button>}
         </div>
       )}
     </div>
@@ -227,7 +215,7 @@ function Snippet({ stem }: { stem: string }) {
 function Detail({ q, p, onPractice }: { q: Question; p?: QuestionProgress; onPractice: () => void }) {
   const [reveal, setReveal] = useState(false);
   return (
-    <div className="mb-4 space-y-5 rounded-xl bg-bb-subtle px-4 py-5 sm:px-6">
+    <div className="gw-qdetail space-y-5">
       <p className="text-sm text-bb-muted">
         {q.domain} · {q.skill} · {TYPE_LABEL[q.type]} · {q.difficulty}
       </p>
@@ -263,7 +251,7 @@ function Detail({ q, p, onPractice }: { q: Question; p?: QuestionProgress; onPra
       )}
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <button className="bb-btn bb-btn-primary !py-1.5 text-sm" onClick={onPractice}>
+        <button className="gw-button" onClick={onPractice}>
           Practice this question
         </button>
         <button className="text-sm font-semibold text-bb-muted hover:text-bb-ink" onClick={() => setReveal((v) => !v)}>
@@ -468,41 +456,24 @@ export function Bank({
       .map((sk) => ({ value: `s:${sk}`, label: sk, count: facet("skill", sk), on: filters.skill.includes(sk), indent: true })),
   ]);
 
-  if (!browsing) {
-    return (
-      // An open folder's fan may reach past a phone's edge; trim it there rather than scroll sideways.
-      <div className="min-h-dvh overflow-x-clip">
-        <AppHeader active="bank" />
-        {notice}
-        <main className={`${WIDTH} py-6 sm:py-10`}>
-          <Sections
-            bank={bank}
-            progress={progress}
-            onPick={(pick: SectionPick) => browse("skill" in pick ? { skill: [pick.skill] } : { domain: [pick.domain] })}
-            onAll={() => browse({})}
-          />
-        </main>
-      </div>
-    );
-  }
-
   // Nothing in the picked section or topic yet (as opposed to filters that leave nothing).
   const emptyTopic =
     (filters.domain.length > 0 || filters.skill.length > 0) &&
     !bank.some((q) => matches(q, { ...NO_FILTERS, domain: filters.domain, skill: filters.skill }, progress));
 
-  return (
-    <div className="min-h-dvh">
-      <AppHeader active="bank" />
-      {notice}
-      <main className={`${WIDTH} py-6 sm:py-10`}>
-        <button onClick={toSections} className="-ml-1 mb-5 flex items-center gap-1 text-sm font-semibold text-bb-muted hover:text-bb-ink">
-          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
-            <path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Sections
-        </button>
-        {/* Filters: one row of menus. Groups with a single value (all "Hard", one book) are left out. */}
+  const sections = (
+    <Sections
+      bank={bank}
+      progress={progress}
+      onPick={(pick: SectionPick) => browse("skill" in pick ? { skill: [pick.skill] } : { domain: [pick.domain] })}
+    />
+  );
+
+  const questions = (
+    <>
+      {/* Filters, then a set from whatever they leave. Raised so the filter menus open over the list. */}
+      <section className="gw-panel gw-reveal gw-raise">
+        {/* One row of menus. Groups with a single value (all "Hard", one book) are left out. */}
         <div className="relative flex flex-wrap items-center gap-2">
           <FilterMenu
             label="Status"
@@ -538,46 +509,39 @@ export function Bank({
               onClear={() => clearGroup("source")}
             />
           )}
-          <label
-            className={`flex items-center gap-1 rounded-full py-1.5 pl-3.5 pr-3 text-sm ${
-              byNumber && !numBad ? "bg-bb-ink text-bb-bg" : "bg-bb-subtle"
-            } ${numBad ? "ring-2 ring-bb-red" : ""}`}
-          >
-            <span className="font-semibold">#</span>
+          <label className={`gw-chip ${byNumber && !numBad ? "is-on" : ""} ${numBad ? "is-bad" : ""}`}>
+            <span>#</span>
             <input
               value={numText}
               onChange={(e) => setNumbers(e.target.value)}
               placeholder="e.g. 10-20"
               aria-label="Question numbers"
               aria-invalid={numBad}
-              className="w-24 bg-transparent font-semibold outline-none placeholder:font-normal placeholder:text-bb-muted"
             />
           </label>
           {anyFilter && (
-            <button onClick={clear} className="px-2 text-sm text-bb-muted hover:text-bb-ink">
+            <button onClick={clear} className="gw-text-button px-2">
               Clear all
             </button>
           )}
         </div>
-        {numBad && <p className="mt-2 text-sm text-bb-red">Type question numbers like 10-20, 34, or 1-5, 12.</p>}
+        {numBad && <p className="gw-negative mt-2 text-[13px]">Type question numbers like 10-20, 34, or 1-5, 12.</p>}
 
-        {/* Start a set from whatever is shown. */}
-        <div className="mt-8 flex flex-wrap items-end gap-x-6 gap-y-4">
+        <div className="mt-5 flex flex-wrap items-end gap-x-6 gap-y-4 border-t border-[var(--gw-line)] pt-5">
           <div className="mr-auto">
-            <p className="text-3xl font-bold tabular-nums">
+            <p className="text-3xl font-semibold tracking-tight tabular-nums">
               {shown.length}
-              <span className="ml-2 text-base font-normal text-bb-muted">{shown.length === 1 ? "question" : "questions"}</span>
+              <span className="ml-2 text-base font-normal text-[var(--gw-muted)]">{shown.length === 1 ? "question" : "questions"}</span>
             </p>
-            <p className="mt-1 text-sm text-bb-muted">{title}</p>
             {byNumber && chapters.length > 1 && (
-              <p className="mt-1 text-sm text-bb-muted">
+              <p className="mt-1 text-[13px] text-[var(--gw-muted)]">
                 {chapters.length === 2 ? `${chapters[0]} and ${chapters[1]} both have` : `${chapters.length} chapters have`} these
                 numbers. Pick a Topic to choose one.
               </p>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-            <Segmented
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
+            <GlassSegment
               value={mode}
               options={[
                 ["practice", "Practice"],
@@ -588,7 +552,7 @@ export function Bank({
             />
             {/* Chosen numbers are practiced whole, so the count only applies otherwise. */}
             {!byNumber && (
-              <label className="flex items-center gap-2 text-sm text-bb-muted">
+              <label className="flex items-center gap-2 text-[13px] text-[var(--gw-muted)]">
                 <input
                   type="number"
                   min={1}
@@ -596,7 +560,7 @@ export function Bank({
                   value={count}
                   onChange={(e) => setCount(Number(e.target.value))}
                   aria-label="Questions"
-                  className="w-14 rounded-lg border border-bb-hair bg-bb-surface px-2 py-1.5 text-bb-ink"
+                  className="gw-field w-16"
                 />
                 questions
               </label>
@@ -605,87 +569,116 @@ export function Bank({
               value={order}
               onChange={(e) => setOrder(e.target.value as "random" | "book")}
               aria-label="Order"
-              className="rounded-lg border border-bb-hair bg-bb-surface px-2 py-1.5 text-sm"
+              className="gw-field"
             >
               <option value="random">Random order</option>
               <option value="book">Book order</option>
             </select>
-            <button className="bb-btn bb-btn-primary" disabled={!pool.length} onClick={startSet}>
+            <button className="gw-button" disabled={!pool.length} onClick={startSet}>
               {mode === "timed" ? `Start timed set · ${n}` : `Start practice · ${n}`}
             </button>
           </div>
         </div>
-        <p className="mt-2 text-sm text-bb-muted">
+        <p className="mt-3 text-[13px] text-[var(--gw-muted)]">
           {mode === "practice"
             ? "Check each answer as you go and see the explanation right away."
             : `${timedSeconds(n) / 60} minutes, no feedback until you submit, like a real module.`}
           {mode === "timed" && pool.length < shown.length && ` Flagged questions are left out.`}
         </p>
+      </section>
 
-        <div className="mt-6">
-          {shown.length === 0 && emptyTopic ? (
-            <div className="border-t border-bb-hair py-14 text-center">
-              <p className="font-semibold">No questions here yet.</p>
-              <p className="mt-2 text-sm text-bb-muted">
-                Add some from a book chapter on the{" "}
-                <Link href="/upload" className="font-semibold text-bb-ink underline underline-offset-4">
-                  Upload
-                </Link>{" "}
-                page.
-              </p>
-            </div>
-          ) : shown.length === 0 ? (
-            <div className="border-t border-bb-hair py-14 text-center">
-              <p className="font-semibold">No questions match these filters.</p>
-              <button onClick={clear} className="mt-2 text-sm text-bb-muted hover:text-bb-ink">
-                Clear all filters
-              </button>
-            </div>
-          ) : (
-            <ul className="border-b border-bb-hair">
-              {shown.slice(0, limit).map((q, i, list) => {
-                const p = progress[q.id];
-                const isOpen = open === q.id;
-                const head = chapters.length > 1 && (i === 0 || chapter(list[i - 1]) !== chapter(q)) ? chapter(q) : null;
-                return (
-                  <Fragment key={q.id}>
-                    {head && <li className="pb-2 pt-8 text-sm font-semibold text-bb-muted first:pt-0">{head}</li>}
-                    <li className="border-t border-bb-hair">
-                      <button
-                        onClick={() => setOpen(isOpen ? null : q.id)}
-                        aria-expanded={isOpen}
-                        className="group flex w-full items-start gap-4 py-4 text-left"
-                      >
-                        <span className="w-8 shrink-0 pt-0.5 text-right font-semibold tabular-nums text-bb-muted group-hover:text-bb-ink">
-                          {q.sourceNumber}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <Snippet stem={q.stem} />
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2 pt-0.5">
-                          {p?.last.marked && <BookmarkIcon filled width={18} height={18} className="text-bb-red" />}
-                          <StatusIcon p={p} />
-                        </div>
-                      </button>
-                      {isOpen && (
-                        <Detail q={q} p={p} onPractice={() => start([q.id], "practice", `Question ${q.sourceNumber}`)} />
-                      )}
-                    </li>
-                  </Fragment>
-                );
-              })}
-            </ul>
-          )}
-          {shown.length > limit && (
-            <button
-              onClick={() => setLimit((l) => l + PAGE)}
-              className="mt-2 w-full py-3 text-sm font-semibold text-bb-muted hover:text-bb-ink"
-            >
-              Show more ({shown.length - limit} left)
-            </button>
-          )}
-        </div>
-      </main>
-    </div>
+      <section className="gw-panel gw-reveal mt-4">
+        {shown.length === 0 && emptyTopic ? (
+          <div className="gw-empty">
+            <h3>No questions here yet</h3>
+            <p>Add some from a book chapter on the Upload page.</p>
+            <Link href="/upload">Upload</Link>
+          </div>
+        ) : shown.length === 0 ? (
+          <div className="gw-empty">
+            <h3>No questions match these filters</h3>
+            <button onClick={clear}>Clear all filters</button>
+          </div>
+        ) : (
+          <ul className="gw-qlist">
+            {shown.slice(0, limit).map((q, i, list) => {
+              const p = progress[q.id];
+              const isOpen = open === q.id;
+              const head = chapters.length > 1 && (i === 0 || chapter(list[i - 1]) !== chapter(q)) ? chapter(q) : null;
+              return (
+                <Fragment key={q.id}>
+                  {head && <li className="gw-qhead">{head}</li>}
+                  <li>
+                    <button onClick={() => setOpen(isOpen ? null : q.id)} aria-expanded={isOpen} className="gw-qrow">
+                      <span className="gw-qnum tabular-nums">{q.sourceNumber}</span>
+                      <div className="min-w-0 flex-1 pt-1.5">
+                        <Snippet stem={q.stem} />
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 pt-1.5">
+                        {p?.last.marked && <BookmarkIcon filled width={18} height={18} className="text-bb-red" />}
+                        <StatusIcon p={p} />
+                      </div>
+                    </button>
+                    {isOpen && <Detail q={q} p={p} onPractice={() => start([q.id], "practice", `Question ${q.sourceNumber}`)} />}
+                  </li>
+                </Fragment>
+              );
+            })}
+          </ul>
+        )}
+        {shown.length > limit && (
+          <button
+            onClick={() => setLimit((l) => l + PAGE)}
+            className="mt-2 w-full border-t border-[var(--gw-line)] pt-4 text-[13px] font-semibold text-[var(--gw-muted)] hover:text-[var(--gw-ink)]"
+          >
+            Show more ({shown.length - limit} left)
+          </button>
+        )}
+      </section>
+    </>
+  );
+
+  const views: GlassView[] = [
+    {
+      id: "sections",
+      label: "Sections",
+      icon: LayoutGrid,
+      title: "Practice",
+      eyebrow: "Open a section, then pick a topic",
+      aside: (
+        <button className="gw-text-button" onClick={() => browse({})}>
+          All {bank.length} questions
+          <ArrowRight size={14} aria-hidden="true" />
+        </button>
+      ),
+      content: browsing ? null : sections,
+    },
+    {
+      id: "questions",
+      label: "Questions",
+      icon: ListChecks,
+      title: anyFilter ? title : "All questions",
+      eyebrow: (
+        <button className="gw-back" onClick={toSections}>
+          <ChevronLeft size={15} aria-hidden="true" />
+          Sections
+        </button>
+      ),
+      content: browsing ? questions : null,
+    },
+  ];
+
+  return (
+    <AppGlass
+      active="bank"
+      views={views}
+      view={browsing ? "questions" : "sections"}
+      onViewChange={(id) => {
+        if (id === "sections" && browsing) toSections();
+        else if (id === "questions" && !browsing) browse({});
+      }}
+      banner={notice}
+      footerNote={browsing ? "Status shows how your most recent attempt at each question went." : undefined}
+    />
   );
 }

@@ -30,8 +30,9 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import GlassWorkspace, { GlassChart, GlassSegment, type GlassSettings, type GlassView } from "../ui/adjustable-glass-dashboard";
-import { AppHeader, NAV, PAGE } from "../AppHeader";
+import { GlassChart, GlassSegment, type GlassView } from "../ui/adjustable-glass-dashboard";
+import { AppGlass } from "../AppGlass";
+import { AppHeader, PAGE } from "../AppHeader";
 import { formatClock } from "../bluebook/TopBar";
 import { useHydrated } from "../LocalDate";
 import { mergeSessions, type SessionSummary } from "@/lib/history";
@@ -70,26 +71,6 @@ const SECTIONS: { domain: Domain; label: string; icon: LucideIcon }[] = [
   { domain: "Problem-Solving and Data Analysis", label: "Problem Solving", icon: ChartPie },
 ];
 const sectionIcon = (domain: Domain) => SECTIONS.find((x) => x.domain === domain)?.icon ?? LayoutGrid;
-
-/** The standard look of the glass; the viewer can change it and it's remembered in this browser. */
-const BASE_GLASS: GlassSettings = { blur: 22, opacity: 0.42, saturation: 1.3, tint: "#ffffff", edge: 0.6 };
-const GLASS_KEY = "mather:glass";
-
-function readGlass(): Partial<GlassSettings> | undefined {
-  try {
-    const saved: unknown = JSON.parse(localStorage.getItem(GLASS_KEY) ?? "null");
-    return saved && typeof saved === "object" ? (saved as Partial<GlassSettings>) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-function saveGlass(settings: GlassSettings) {
-  try {
-    localStorage.setItem(GLASS_KEY, JSON.stringify(settings));
-  } catch {
-    // Storage can be off (private windows); the look just isn't remembered.
-  }
-}
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 const clock = (ms: number) => formatClock(ms / 1000);
@@ -249,8 +230,6 @@ export function StatsView({
   const [kind, setKind] = useState<Kind>("all");
   const [filter, setFilter] = useState("");
   const [local, setLocal] = useState<Session[]>([]);
-  // Only read in the browser: the dashboard itself renders after hydration.
-  const [savedGlass] = useState(readGlass);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- read from localStorage after mount
@@ -785,18 +764,13 @@ export function StatsView({
   ];
 
   return (
-    <GlassWorkspace
-      className="bb-glass"
-      brand="mather"
-      links={NAV.map((n) => ({ href: n.href, label: n.label, current: n.key === "stats" }))}
+    <AppGlass
+      active="stats"
       views={views}
       view={view}
       onViewChange={(id) => setView(id as StatsTab)}
       banner={notice}
       footerNote="Score estimates come from your latest full exam and typical Bluebook score ranges. Book questions are often harder than the real test."
-      glass={BASE_GLASS}
-      initialGlass={savedGlass}
-      onGlassChange={saveGlass}
     />
   );
 }

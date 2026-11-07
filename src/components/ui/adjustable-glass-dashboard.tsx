@@ -36,8 +36,8 @@ export type GlassView = {
   icon: LucideIcon;
   /** Heading of the view. */
   title: string;
-  /** Small line above the heading. */
-  eyebrow?: string;
+  /** Small line above the heading (text, or e.g. a back link). */
+  eyebrow?: ReactNode;
   /** Right side of the heading, when there's no action. */
   aside?: ReactNode;
   /** A button in the heading. A returned string is shown as a toast. */
@@ -105,6 +105,13 @@ export default function GlassWorkspace({
   const settingsTrigger = useRef<HTMLButtonElement>(null);
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const [material, setMaterial] = useState(() => normalizeGlass({ ...glass, ...initialGlass }));
+  // A saved look can arrive after the first render (it's read from the browser after hydration).
+  const startKey = JSON.stringify(initialGlass ?? null);
+  const [appliedKey, setAppliedKey] = useState(startKey);
+  if (appliedKey !== startKey) {
+    setAppliedKey(startKey);
+    setMaterial(normalizeGlass({ ...glass, ...initialGlass }));
+  }
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [failedImage, setFailedImage] = useState<string>();
@@ -733,6 +740,15 @@ const styles = `
   color: var(--gw-muted);
   margin-bottom: 5px !important;
 }
+.gw-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: -3px;
+  font-weight: 600;
+  color: var(--gw-muted);
+}
+.gw-back:hover { color: var(--gw-ink); }
 .gw-view-heading h1 {
   font-size: clamp(25px, 2.3vw, 31px);
   font-weight: 600;
@@ -1302,6 +1318,120 @@ a.gw-transaction:hover .gw-transaction-name strong { text-decoration: underline;
   white-space: nowrap;
 }
 .gw-chart-empty { padding: 35px 15px; min-height: 160px; }
+.gw-raise { z-index: 2; }
+.gw-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--gw-segment);
+}
+.gw-chip:hover { background: var(--gw-control-hover); }
+.gw-chip.is-on { background: var(--gw-dock-active); color: var(--gw-dock-ink); }
+.gw-chip.is-bad { box-shadow: 0 0 0 2px var(--gw-negative); }
+.gw-chip:focus-within:has(input) { outline: 2px solid var(--gw-accent); outline-offset: 2px; }
+.gw-chip input { width: 6rem; background: none; border: 0; outline: 0; font-weight: 600; }
+.gw-chip input::placeholder { font-weight: 400; color: var(--gw-muted); }
+.gw-chip.is-on input::placeholder { color: inherit; opacity: 0.7; }
+.gw-chip svg { transition: transform 0.2s; }
+.gw-chip[aria-expanded="true"] svg { transform: rotate(180deg); }
+.gw-field {
+  border: 1px solid var(--gw-line);
+  background: var(--gw-search);
+  border-radius: 9px;
+  padding: 6px 9px;
+  font-size: 13px;
+  color: var(--gw-ink);
+}
+.gw-menu {
+  position: absolute;
+  z-index: 25;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 8px;
+  max-height: min(70vh, 28rem);
+  overflow-y: auto;
+  border-radius: 14px;
+  padding: 6px;
+  /* Solid, so the text under an open menu doesn't show through. */
+  background: var(--gw-surface);
+  box-shadow: inset 0 1px 0 var(--gw-soft-edge), 0 18px 50px var(--gw-popover-shadow);
+  scrollbar-width: thin;
+}
+@media (min-width: 640px) {
+  .gw-menu { right: auto; width: 320px; }
+}
+.gw-menu label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+.gw-menu label:hover { background: var(--gw-hover); }
+.gw-menu label.is-indent { padding-left: 32px; }
+.gw-menu label.is-empty { color: var(--gw-muted); opacity: 0.75; }
+.gw-menu label > span:first-of-type { flex: 1; }
+.gw-menu label.is-strong > span:first-of-type { font-weight: 600; }
+.gw-menu label > span:last-child { color: var(--gw-muted); }
+.gw-menu input { accent-color: var(--gw-ink); margin-top: 1px; width: 15px; height: 15px; flex: none; }
+.gw-menu > button {
+  width: 100%;
+  text-align: left;
+  border-radius: 9px;
+  padding: 8px 10px;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--gw-muted);
+}
+.gw-menu > button:hover { background: var(--gw-hover); color: var(--gw-ink); }
+.gw-qlist { list-style: none; margin: 0; padding: 0; }
+.gw-qlist > li { border-top: 1px solid var(--gw-line); }
+.gw-qlist > li:first-child,
+.gw-qlist > li.gw-qhead,
+.gw-qlist > li.gw-qhead + li { border-top: 0; }
+.gw-qhead { padding: 26px 0 6px; font-size: 13px; font-weight: 600; color: var(--gw-muted); }
+.gw-qhead:first-child { padding-top: 0; }
+.gw-qrow {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 13px 0;
+  text-align: left;
+}
+.gw-qnum {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--gw-transaction-surface);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gw-muted);
+}
+.gw-qrow:hover .gw-qnum,
+.gw-qrow[aria-expanded="true"] .gw-qnum { background: var(--gw-income-surface); color: var(--gw-accent); }
+.gw-qdetail {
+  margin: 0 0 16px;
+  border-radius: 14px;
+  background: var(--gw-transaction-surface);
+  padding: 20px 22px;
+}
+@media (max-width: 700px) {
+  .gw-qdetail { padding: 16px 14px; }
+  .gw-qrow { gap: 11px; }
+}
 @supports not (backdrop-filter: blur(1px)) {
   .gw-glass,
   .gw-panel { background: var(--gw-fallback); }

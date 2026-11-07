@@ -22,7 +22,7 @@ async function BankData() {
   await connection();
   const [bank, progress] = await Promise.all([getBank(), orNull(getProgress)]);
   return (
-    <Bank bank={bank} progress={progress.data} notice={<DbNotice status={dbStatus()} error={progress.error} />} />
+    <Bank bank={bank} progress={progress.data} notice={<DbNotice status={dbStatus()} error={progress.error} className="" />} />
   );
 }
 
