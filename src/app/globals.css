@@ -313,3 +313,92 @@ body {
 .dcg-container {
   font-family: system-ui, sans-serif;
 }
+
+/* ---------- Glass dashboard (Stats) ----------
+ * Colors for src/components/ui/adjustable-glass-dashboard.tsx, from the tokens above, so the
+ * dashboard follows light and dark mode. The backdrop is soft color the glass frosts over.
+ */
+.gw-root.bb-glass {
+  --gw-ink: var(--bb-ink);
+  --gw-muted: var(--bb-muted);
+  --gw-accent: var(--bb-link);
+  --gw-positive: var(--bb-green);
+  --gw-negative: var(--bb-red);
+  --gw-positive-surface: var(--bb-green-soft);
+  --gw-negative-surface: var(--bb-red-soft);
+  --gw-line: color-mix(in srgb, var(--bb-ink) 13%, transparent);
+  --gw-canvas: var(--bb-bg);
+  --gw-background:
+    radial-gradient(42% 38% at 12% 14%, #b9c6fb 0%, transparent 70%),
+    radial-gradient(38% 34% at 88% 10%, #ffd9b8 0%, transparent 70%),
+    radial-gradient(46% 40% at 78% 78%, #b8e2d2 0%, transparent 70%),
+    radial-gradient(40% 36% at 22% 88%, #dccdfb 0%, transparent 70%),
+    radial-gradient(30% 26% at 50% 46%, #c9d6ff 0%, transparent 70%),
+    #eef0f6;
+  --gw-shade: transparent;
+  --gw-surface: var(--bb-surface);
+  --gw-panel: var(--bb-surface);
+  --gw-rail-active: color-mix(in srgb, var(--bb-surface) 85%, transparent);
+  --gw-account-surface: color-mix(in srgb, var(--bb-surface) 60%, transparent);
+  --gw-account-action: color-mix(in srgb, var(--bb-surface) 60%, transparent);
+  --gw-segment: color-mix(in srgb, var(--bb-ink) 7%, transparent);
+  --gw-segment-active: color-mix(in srgb, var(--bb-surface) 92%, transparent);
+  --gw-transaction-surface: color-mix(in srgb, var(--bb-surface) 60%, transparent);
+  --gw-income-surface: color-mix(in srgb, var(--bb-blue) 14%, transparent);
+  --gw-goal-surface: color-mix(in srgb, var(--bb-surface) 60%, transparent);
+  --gw-pending: var(--bb-amber-ink);
+  --gw-dock: color-mix(in srgb, var(--bb-surface) 65%, transparent);
+  --gw-dock-active: var(--bb-ink);
+  --gw-dock-ink: var(--bb-bg);
+  --gw-button: var(--bb-blue);
+  --gw-button-ink: #fff;
+  --gw-search: color-mix(in srgb, var(--bb-surface) 55%, transparent);
+  --gw-savings-orb: color-mix(in srgb, var(--bb-blue) 14%, transparent);
+  --gw-popover: color-mix(in srgb, var(--bb-surface) 94%, transparent);
+  --gw-fallback: var(--bb-surface);
+  --gw-mobile-dock: color-mix(in srgb, var(--bb-surface) 55%, transparent);
+  --gw-shadow: #1e1e1e30;
+  --gw-panel-shadow: #1e1e1e2a;
+  --gw-soft-shadow: #1e1e1e12;
+  --gw-segment-shadow: #1e1e1e12;
+  --gw-dock-shadow: #1e1e1e18;
+  --gw-popover-shadow: #1e1e1e33;
+  --gw-sample-shadow: #1e1e1e55;
+  --gw-toast-shadow: #0003;
+  --gw-toast: var(--bb-ink);
+  --gw-toast-ink: var(--bb-bg);
+  --gw-selection: color-mix(in srgb, var(--bb-blue) 25%, transparent);
+  --gw-scrollbar: var(--bb-faint);
+  --gw-hover: color-mix(in srgb, var(--bb-ink) 6%, transparent);
+  --gw-dock-hover: color-mix(in srgb, var(--bb-ink) 7%, transparent);
+  --gw-control-hover: color-mix(in srgb, var(--bb-ink) 7%, transparent);
+  --gw-strong-edge: #fff9;
+  --gw-soft-edge: #fff8;
+  --gw-highlight: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .gw-root.bb-glass {
+    --gw-background:
+      radial-gradient(42% 38% at 12% 14%, #23306b 0%, transparent 70%),
+      radial-gradient(38% 34% at 88% 10%, #4a2f22 0%, transparent 70%),
+      radial-gradient(46% 40% at 78% 78%, #173d33 0%, transparent 70%),
+      radial-gradient(40% 36% at 22% 88%, #33245a 0%, transparent 70%),
+      radial-gradient(30% 26% at 50% 46%, #1d2850 0%, transparent 70%),
+      #101114;
+    --gw-shade: #0000004d;
+    --gw-income-surface: color-mix(in srgb, var(--bb-blue) 30%, transparent);
+    --gw-savings-orb: color-mix(in srgb, var(--bb-blue) 30%, transparent);
+    --gw-shadow: #0009;
+    --gw-panel-shadow: #0008;
+    --gw-soft-shadow: #0005;
+    --gw-segment-shadow: #0005;
+    --gw-dock-shadow: #0006;
+    --gw-popover-shadow: #000a;
+    --gw-sample-shadow: #000a;
+    --gw-toast-shadow: #0008;
+    --gw-strong-edge: #ffffff30;
+    --gw-soft-edge: #ffffff26;
+    --gw-highlight: #ffffff4d;
+  }
+}

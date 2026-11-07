@@ -143,17 +143,26 @@ Click a question to see its skill, the full question, the answer and explanation
 
 ## Progress (Phase 4)
 
-- **Stats** (`/stats`), scoped by one period filter (all time, last 30 days, last 7 days):
-  - estimated SAT Math score from the latest full exam, with its range and the change since the exam before
-  - questions answered, accuracy, and time per question against SAT pace (35 min / 22 questions ≈ 1:35)
-  - one chart with a switch: accuracy or questions answered per day or week, or the score estimate per
-    exam (with a "Show as table" view)
-  - weakest skills (at least 3 answers each), each with a "Practice" link to the bank filtered to that
-    skill's missed and unanswered questions
-  - under "More detail": days practiced and streak, questions not tried yet, accuracy by domain, every
-    skill, difficulty, practice vs tests, and the slowest questions
-- **History** (the second tab under Stats, `/history`): every finished exam, timed set and practice set,
-  filterable, linking to results.
+- **Stats** (`/stats`) is a frosted-glass dashboard (`src/components/ui/adjustable-glass-dashboard.tsx`,
+  adapted from the 21st.dev Adjustable Glass Dashboard; the stats themselves are in
+  `src/components/stats/StatsView.tsx`). Its top bar carries the menu. It has four views, switched from the
+  side rail, the bottom dock, or the tabs on a phone (arrow keys move between them). One period filter
+  (7 days, 30 days, all time) applies to all of them:
+  - **Overview**: estimated SAT Math score from the latest full exam, with its range and the change since
+    the exam before; correct and missed answers per day or week; the four most recent sessions; the
+    weakest skills (at least 3 answers each), each with a "Practice" link to the bank filtered to that
+    skill's missed and unanswered questions.
+  - **History** (also `/history`): every finished exam, timed set and practice set, with search, a type
+    filter, and **Export CSV** of what's shown. Each row opens its results.
+  - **Sections**: accuracy by section and for every skill practiced, with time per question; skills slower
+    than SAT pace (35 min / 22 questions ≈ 1:35) are marked. Each opens the bank.
+  - **Reports**: answered, accuracy and time per question; accuracy over time or the score estimate per
+    exam; where the misses are by section; days practiced and streak, questions not tried yet, answers
+    slower than pace; practice vs tests, difficulty, and the slowest questions.
+  - **Adjust glass** changes the blur, opacity, saturation, edge light and tint of the panels, remembered
+    in the browser. The colors come from the app's tokens (`.bb-glass` in `globals.css`), so it follows
+    light and dark mode; the backdrop is soft color drawn in CSS. The component also accepts a
+    `backgroundImage` for a photo behind the glass.
 - **Results** pages lead with the score (and the estimate for full exams), then the questions you missed;
   the breakdown by domain and skill is folded below. Slow questions are marked, and there are links to
   practice the missed ones or drill the skill missed most.

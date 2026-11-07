@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const NAV = [
+export const NAV = [
   { href: "/bank", label: "Practice", key: "bank" },
   { href: "/stats", label: "Stats", key: "stats" },
   { href: "/upload", label: "Upload", key: "upload" },

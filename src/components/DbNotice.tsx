@@ -9,11 +9,11 @@ const list = (names: string[]) => names.map((n, i) => (
 ));
 
 /** Note shown when progress can't reach the database, saying what to fix. */
-export function DbNotice({ status, error }: { status: DbStatus; error?: boolean }) {
+export function DbNotice({ status, error, className = PAGE }: { status: DbStatus; error?: boolean; className?: string }) {
   if (status.mode !== "none" && !error) return null;
   const hint = status.hint;
   return (
-    <div className={PAGE}>
+    <div className={className}>
       <p className="rounded-lg bg-bb-amber-soft px-4 py-2.5 text-sm">
         {status.mode !== "none" ? (
           <>

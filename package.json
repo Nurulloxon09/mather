@@ -10,9 +10,11 @@
     "test": "tsx scripts/test-grid.ts && tsx scripts/test-progress.ts && tsx scripts/test-stats.ts && tsx scripts/test-db-env.ts && tsx scripts/test-numbers.ts && tsx scripts/validate-data.ts"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@libsql/client": "^0.18.0",
     "clsx": "^2.1.1",
     "framer-motion": "^14.10.1",
+    "gsap": "^3.15.1",
     "jszip": "^3.10.2",
     "katex": "^0.16.47",
     "lucide-react": "^1.70.0",
