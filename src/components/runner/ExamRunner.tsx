@@ -20,7 +20,7 @@ import {
   type ExamSession,
   type ModuleState,
 } from "@/lib/session";
-import type { Question } from "@/lib/types";
+import { subjectOf, type Question } from "@/lib/types";
 import { CenterMessage, Modal, TestShell } from "./TestShell";
 
 const WARNING_AT = 5 * 60;
@@ -28,8 +28,8 @@ const WARNING_AT = 5 * 60;
 export function ExamRunner({ bank }: { bank: Question[] }) {
   const router = useRouter();
   const byId = useMemo(() => new Map(bank.map((q) => [q.id, q])), [bank]);
-  // Questions with known source problems never go into an exam.
-  const pool = useMemo(() => bank.filter((q) => !q.flag), [bank]);
+  // Questions with known source problems or from Reading & Writing never go into a Math exam.
+  const pool = useMemo(() => bank.filter((q) => !q.flag && subjectOf(q.domain) === "Math"), [bank]);
   const [session, setSession] = useState<ExamSession | null | undefined>(undefined);
   const [name, setName] = useState("");
   const [loadingNext, setLoadingNext] = useState(false);
@@ -159,10 +159,15 @@ export function ExamRunner({ bank }: { bank: Question[] }) {
   const last = m.index === m.questionIds.length - 1;
   const title = session.custom ? `Timed Set: ${session.custom}` : `Section 2, Module ${moduleNo}: Math`;
   const endsTest = !!session.custom || moduleNo === 2;
+  const isMath = m.questionIds.some((id) => {
+    const itemQ = byId.get(id);
+    return !itemQ || subjectOf(itemQ.domain) === "Math";
+  });
 
   return (
     <TestShell
       title={title}
+      isMath={isMath}
       navTitle={`${title} Questions`}
       name={name}
       seconds={secondsLeft}

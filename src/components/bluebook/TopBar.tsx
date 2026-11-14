@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { MathDirections } from "./Directions";
+import { MathDirections, ReadingDirections } from "./Directions";
 import {
   CalculatorIcon,
   ChevronDown,
@@ -75,6 +75,7 @@ export function TopBar({
   refOpen,
   onRef,
   moreItems,
+  isMath = true,
 }: {
   title: string;
   seconds: number;
@@ -88,6 +89,7 @@ export function TopBar({
   refOpen: boolean;
   onRef: () => void;
   moreItems: MoreItem[];
+  isMath?: boolean;
 }) {
   const [dirOpen, setDirOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -149,12 +151,16 @@ export function TopBar({
         </div>
 
         <div className="flex items-center justify-end gap-1">
-          <Tool label="Calculator" active={calcOpen} onClick={onCalc}>
-            <CalculatorIcon />
-          </Tool>
-          <Tool label="Reference" active={refOpen} onClick={onRef}>
-            <ReferenceIcon />
-          </Tool>
+          {isMath && (
+            <>
+              <Tool label="Calculator" active={calcOpen} onClick={onCalc}>
+                <CalculatorIcon />
+              </Tool>
+              <Tool label="Reference" active={refOpen} onClick={onRef}>
+                <ReferenceIcon />
+              </Tool>
+            </>
+          )}
           <Tool label={fs ? "Exit Full" : "Fullscreen"} onClick={toggleFs}>
             {fs ? <ExitFullscreenIcon /> : <FullscreenIcon />}
           </Tool>
@@ -188,7 +194,7 @@ export function TopBar({
           <div className="fixed inset-0 top-[74px] z-30 bg-black/20" onClick={() => setDirOpen(false)} />
           <div className="absolute left-6 top-[66px] z-40 w-[min(760px,calc(100vw-48px))] rounded-lg border border-[#1e1e1e] bg-white shadow-2xl">
             <div className="max-h-[70vh] overflow-auto p-6">
-              <MathDirections />
+              {isMath ? <MathDirections /> : <ReadingDirections />}
             </div>
             <div className="flex justify-end border-t border-bb-line px-6 py-3">
               <button className="bb-btn bb-btn-yellow" onClick={() => setDirOpen(false)}>

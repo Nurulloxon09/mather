@@ -38,6 +38,7 @@ export function TestShell({
   onJump,
   onReviewPage,
   showNav,
+  isMath = true,
   buttons,
   children,
 }: {
@@ -56,6 +57,7 @@ export function TestShell({
   onJump: (i: number) => void;
   onReviewPage?: () => void;
   showNav?: boolean;
+  isMath?: boolean;
   buttons: ReactNode;
   children: ReactNode;
 }) {
@@ -63,13 +65,15 @@ export function TestShell({
   const [refOpen, setRefOpen] = useState(false);
   const [walkthrough, setWalkthrough] = useState<{ way: DesmosWay; answerLatex: string; key: number } | null>(null);
 
-  useEffect(() => preloadDesmos(), []);
+  useEffect(() => {
+    if (isMath) preloadDesmos();
+  }, [isMath]);
 
   const play = useCallback((way: DesmosWay, answerLatex: string) => {
     setWalkthrough((w) => ({ way, answerLatex, key: (w?.key ?? 0) + 1 }));
     setCalcOpen(true);
   }, []);
-  const desmosHelp = useMemo(() => ({ play }), [play]);
+  const desmosHelp = useMemo(() => (isMath ? { play } : null), [isMath, play]);
   const closeCalc = () => {
     setCalcOpen(false);
     setWalkthrough(null);
@@ -89,15 +93,18 @@ export function TestShell({
         refOpen={refOpen}
         onRef={() => setRefOpen((v) => !v)}
         moreItems={moreItems}
+        isMath={isMath}
       />
       {/* The calculator docks on the left and the question moves over, so neither covers the other. */}
       <div className="relative flex min-h-0 flex-1">
-        <Calculator
-          open={calcOpen}
-          onClose={closeCalc}
-          walkthrough={walkthrough}
-          onWalkthroughEnd={() => setWalkthrough(null)}
-        />
+        {isMath && (
+          <Calculator
+            open={calcOpen}
+            onClose={closeCalc}
+            walkthrough={walkthrough}
+            onWalkthroughEnd={() => setWalkthrough(null)}
+          />
+        )}
         <main className="relative min-h-0 min-w-0 flex-1">
           <DesmosHelpContext.Provider value={desmosHelp}>{children}</DesmosHelpContext.Provider>
         </main>
@@ -114,7 +121,7 @@ export function TestShell({
       >
         {buttons}
       </BottomBar>
-      <ReferenceSheet open={refOpen} onClose={() => setRefOpen(false)} />
+      {isMath && <ReferenceSheet open={refOpen} onClose={() => setRefOpen(false)} />}
     </div>
   );
 }

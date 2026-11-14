@@ -1,5 +1,5 @@
 import { MODULE_SIZE } from "./session";
-import { DIFFICULTIES, DOMAINS, type Difficulty, type Domain, type Question } from "./types";
+import { DIFFICULTIES, MATH_DOMAINS, type Difficulty, type Domain, type MathDomain, type Question } from "./types";
 
 export function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -26,8 +26,8 @@ export function filterQuestions(bank: Question[], f: Omit<PracticeFilter, "count
   );
 }
 
-// Approximate Digital SAT content mix per module.
-const DOMAIN_WEIGHT: Record<Domain, number> = {
+// Approximate Digital SAT Math content mix per module.
+const DOMAIN_WEIGHT: Record<MathDomain, number> = {
   Algebra: 0.35,
   "Advanced Math": 0.35,
   "Problem-Solving and Data Analysis": 0.15,
@@ -56,9 +56,10 @@ function weightedSample(pool: Question[], n: number, weight: (q: Question) => nu
  * for the adaptive route, ordered easy → hard like the real test.
  */
 export function buildModule(bank: Question[], route: Route, exclude: Set<string> = new Set()) {
-  const pool = bank.filter((q) => !exclude.has(q.id));
+  const mathSet = new Set<string>(MATH_DOMAINS);
+  const pool = bank.filter((q) => mathSet.has(q.domain) && !exclude.has(q.id));
   const weight = (q: Question) => DIFFICULTY_WEIGHT[route][q.difficulty];
-  const available = DOMAINS.filter((d) => pool.some((q) => q.domain === d));
+  const available = MATH_DOMAINS.filter((d) => pool.some((q) => q.domain === d));
   const totalW = available.reduce((s, d) => s + DOMAIN_WEIGHT[d], 0);
 
   const picked: Question[] = [];

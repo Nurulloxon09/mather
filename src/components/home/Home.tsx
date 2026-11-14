@@ -23,7 +23,7 @@ import {
 import { mergeSessions, type SessionSummary } from "@/lib/history";
 import type { ProgressMap } from "@/lib/attempts";
 import type { Goal } from "@/lib/plan";
-import type { Question } from "@/lib/types";
+import { subjectOf, type Question } from "@/lib/types";
 import type { DbStatus } from "@/server/db";
 import { Plan } from "./Plan";
 
@@ -140,7 +140,9 @@ export function Home({ bank, recent }: { bank: Question[]; recent: Promise<Recen
     router.prefetch("/bank");
   }, [router]);
 
-  const examPool = bank.filter((q) => !q.flag);
+  const examPool = bank.filter((q) => !q.flag && subjectOf(q.domain) === "Math");
+  const mathCount = bank.filter((q) => subjectOf(q.domain) === "Math").length;
+  const ebrwCount = bank.filter((q) => subjectOf(q.domain) === "Reading and Writing").length;
 
   const startPractice = (title: string, ids: string[]) => {
     if (activePractice && !confirm(`"${sessionLabel(activePractice)}" is still in progress. Start a new set instead?`)) {
@@ -229,7 +231,7 @@ export function Home({ bank, recent }: { bank: Question[]; recent: Promise<Recen
           <div className={ACTION}>
             <Card3D
               title="Practice"
-              description={`${bank.length} questions in 4 sections: Algebra, Advanced Math, Geometry and Problem Solving.`}
+              description={`${bank.length} questions across Math (${mathCount}) and Reading & Writing (${ebrwCount}).`}
               icon={<BookOpen size={28} strokeWidth={1.75} />}
               theme="primary"
               size="sm"

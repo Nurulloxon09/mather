@@ -91,3 +91,23 @@ export function MathDirections() {
     </div>
   );
 }
+
+/** General Reading and Writing section directions, shown from the "Directions" dropdown. */
+export function ReadingDirections() {
+  return (
+    <div className="space-y-3 text-[15px] leading-relaxed">
+      <p>
+        The questions in this section address a number of important reading and writing skills. Each
+        question includes one or more passages, which may include a table or graph.
+      </p>
+      <p>
+        Read each passage and question carefully, and then choose the best answer to the question
+        based on the passage(s).
+      </p>
+      <p>
+        All questions in this section are multiple-choice with four answer choices. Each question has
+        a single best answer.
+      </p>
+    </div>
+  );
+}

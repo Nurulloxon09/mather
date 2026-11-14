@@ -1,11 +1,40 @@
-export const DOMAINS = [
+export const SUBJECTS = ["Math", "Reading and Writing"] as const;
+export type Subject = (typeof SUBJECTS)[number];
+
+export const MATH_DOMAINS = [
   "Algebra",
   "Advanced Math",
   "Problem-Solving and Data Analysis",
   "Geometry and Trigonometry",
 ] as const;
 
+export const EBRW_DOMAINS = [
+  "Information and Ideas",
+  "Craft and Structure",
+  "Expression of Ideas",
+  "Standard English Conventions",
+] as const;
+
+export const DOMAINS = [...MATH_DOMAINS, ...EBRW_DOMAINS] as const;
+
+export type MathDomain = (typeof MATH_DOMAINS)[number];
+export type EbrwDomain = (typeof EBRW_DOMAINS)[number];
 export type Domain = (typeof DOMAINS)[number];
+
+export const DOMAIN_SUBJECT: Record<Domain, Subject> = {
+  Algebra: "Math",
+  "Advanced Math": "Math",
+  "Problem-Solving and Data Analysis": "Math",
+  "Geometry and Trigonometry": "Math",
+  "Information and Ideas": "Reading and Writing",
+  "Craft and Structure": "Reading and Writing",
+  "Expression of Ideas": "Reading and Writing",
+  "Standard English Conventions": "Reading and Writing",
+};
+
+export function subjectOf(domain: Domain): Subject {
+  return DOMAIN_SUBJECT[domain];
+}
 
 export const SKILLS: Record<Domain, readonly string[]> = {
   Algebra: [
@@ -34,6 +63,24 @@ export const SKILLS: Record<Domain, readonly string[]> = {
     "Lines, angles, and triangles",
     "Right triangles and trigonometry",
     "Circles",
+  ],
+  "Information and Ideas": [
+    "Central Ideas and Details",
+    "Command of Evidence",
+    "Inferences",
+  ],
+  "Craft and Structure": [
+    "Words in Context",
+    "Text Structure and Purpose",
+    "Cross-Text Connections",
+  ],
+  "Expression of Ideas": [
+    "Rhetorical Synthesis",
+    "Transitions",
+  ],
+  "Standard English Conventions": [
+    "Boundaries",
+    "Form, Structure, and Sense",
   ],
 };
 

@@ -1,5 +1,5 @@
 import "server-only";
-import { DIFFICULTIES, DOMAINS, SKILLS, type Difficulty, type Domain, type Question } from "@/lib/types";
+import { DIFFICULTIES, DOMAINS, SKILLS, subjectOf, type Difficulty, type Domain, type Question } from "@/lib/types";
 import type { DesmosStep, DesmosWay } from "@/lib/desmos";
 import { cleanAnswer, type PendingFigure } from "@/lib/uploads";
 
@@ -323,11 +323,17 @@ export async function extractPages(pages: PageInput[], model: string, hints: { s
 
 // ---------- Solving (a second opinion in the review screen) ----------
 
-const SOLVE_SYSTEM = `You are an expert Digital SAT math tutor. Solve the question carefully and check your work.
+const SOLVE_SYSTEM_MATH = `You are an expert Digital SAT math tutor. Solve the question carefully and check your work.
 
 ${MARKUP_RULES}
 
 Return "answer": the choice letter for multiple choice, or for a grid-in the exact value as a student would enter it (fraction like 7/2 or decimal; if several values are correct list the simplest one). Return "explanation": a concise step-by-step solution a student can follow, in the markup.`;
+
+const SOLVE_SYSTEM_EBRW = `You are an expert Digital SAT Reading and Writing tutor. Analyze the passage and question carefully and verify your reasoning against the text.
+
+${MARKUP_RULES}
+
+Return "answer": the correct choice letter (A, B, C, or D). Return "explanation": a clear explanation identifying the central idea or textual evidence that proves why the correct choice is best and why the distractors fail.`;
 
 const SOLVE_SCHEMA = obj({
   answer: str("Choice letter, or the grid-in value"),
@@ -340,7 +346,8 @@ export async function solveQuestion(q: Question, images: { mime: string; data: s
   else lines.push("(Grid-in: the student types the answer.)");
   const parts: Part[] = [{ text: lines.join("\n\n") }];
   for (const img of images) parts.push({ inlineData: { mimeType: img.mime, data: img.data } });
-  const out = (await generate(model, SOLVE_SYSTEM, parts, SOLVE_SCHEMA, 16000)) as { answer?: unknown; explanation?: unknown };
+  const system = subjectOf(q.domain) === "Reading and Writing" ? SOLVE_SYSTEM_EBRW : SOLVE_SYSTEM_MATH;
+  const out = (await generate(model, system, parts, SOLVE_SCHEMA, 16000)) as { answer?: unknown; explanation?: unknown };
   const raw = asStr(out.answer);
   return { answer: cleanAnswer(raw, q.type) ?? raw.trim(), explanation: asStr(out.explanation).trim() };
 }
@@ -364,7 +371,7 @@ function tutorParts(q: Question, images: { mime: string; data: string }[], extra
   return parts;
 }
 
-const HINTS_SYSTEM = `You are a friendly Digital SAT math tutor. A student is stuck on a question and asks for a hint.
+const HINTS_SYSTEM_MATH = `You are a friendly Digital SAT math tutor. A student is stuck on a question and asks for a hint.
 
 ${MARKUP_RULES}
 
@@ -374,16 +381,27 @@ Write exactly 3 hints, each one step further than the last:
 3. The step just before the end, so the student only has to finish it.
 Never give the final answer, the correct choice letter, or the final value. Each hint is one or two short sentences, speaking to the student ("you").`;
 
+const HINTS_SYSTEM_EBRW = `You are a friendly Digital SAT Reading and Writing tutor. A student is stuck on a question and asks for a hint.
+
+${MARKUP_RULES}
+
+Write exactly 3 hints, each one step further than the last:
+1. How to approach the passage or question type (for example, identifying the main focus vs. a supporting example).
+2. Which specific part, shift, or claim in the passage to focus on.
+3. What criteria the right answer must satisfy (or what common trap to rule out) without naming the correct choice.
+Never give the final answer or the correct choice letter. Each hint is one or two short sentences, speaking to the student ("you").`;
+
 const HINTS_SCHEMA = obj({ hints: arr(str("One hint in the markup")) });
 
 export async function tutorHints(q: Question, images: { mime: string; data: string }[], model: string) {
-  const out = (await generate(model, HINTS_SYSTEM, tutorParts(q, images), HINTS_SCHEMA, 8000)) as { hints?: unknown };
+  const system = subjectOf(q.domain) === "Reading and Writing" ? HINTS_SYSTEM_EBRW : HINTS_SYSTEM_MATH;
+  const out = (await generate(model, system, tutorParts(q, images), HINTS_SCHEMA, 8000)) as { hints?: unknown };
   const hints = (Array.isArray(out.hints) ? out.hints : []).map(asStr).map((h) => h.trim()).filter(Boolean).slice(0, 3);
   if (!hints.length) throw new GeminiError("bad-output", "Gemini didn't return any hints");
   return { hints };
 }
 
-const WRONG_SYSTEM = `You are a friendly Digital SAT math tutor. A student answered a question and got it wrong.
+const WRONG_SYSTEM_MATH = `You are a friendly Digital SAT math tutor. A student answered a question and got it wrong.
 
 ${MARKUP_RULES}
 
@@ -392,12 +410,22 @@ Explain, speaking to the student ("you"):
 - Then, in one or two sentences, the key step that gets to the correct answer.
 Two to five sentences in total. If no specific mistake leads to their answer, say what their answer would mean and why it doesn't fit the question.`;
 
+const WRONG_SYSTEM_EBRW = `You are a friendly Digital SAT Reading and Writing tutor. A student answered a question and got it wrong.
+
+${MARKUP_RULES}
+
+Explain, speaking to the student ("you"):
+- Why their chosen answer is tempting and specifically how it misrepresents, exaggerates, narrows, or contradicts the passage.
+- Then, in one or two sentences, the key detail or central idea from the passage that points to the correct choice.
+Two to five sentences in total.`;
+
 const WRONG_SCHEMA = obj({ explanation: str("Why the answer is wrong, in the markup") });
 
 export async function tutorWhyWrong(q: Question, answer: string, images: { mime: string; data: string }[], model: string) {
   const mine = q.type === "mcq" ? `${answer}) ${q.choices?.["ABCD".indexOf(answer)] ?? ""}` : answer;
   const parts = tutorParts(q, images, [`The student answered: ${mine}`]);
-  const out = (await generate(model, WRONG_SYSTEM, parts, WRONG_SCHEMA, 8000)) as { explanation?: unknown };
+  const system = subjectOf(q.domain) === "Reading and Writing" ? WRONG_SYSTEM_EBRW : WRONG_SYSTEM_MATH;
+  const out = (await generate(model, system, parts, WRONG_SCHEMA, 8000)) as { explanation?: unknown };
   const text = asStr(out.explanation).trim();
   if (!text) throw new GeminiError("bad-output", "Gemini didn't return an explanation");
   return { explanation: text };

@@ -37,6 +37,7 @@ export function inlineHtml(src: string) {
   const flush = () => {
     out += escapeHtml(text)
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*([^*\n]+?)\*/g, "<em>$1</em>")
       .replace(/\n/g, "<br/>");
     text = "";
   };

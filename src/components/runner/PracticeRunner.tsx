@@ -20,7 +20,7 @@ import {
   type PracticeSession,
 } from "@/lib/session";
 import { tex } from "@/lib/rich";
-import type { Question } from "@/lib/types";
+import { subjectOf, type Question } from "@/lib/types";
 import { DesmosButton, PracticeHelp, WhyWrong } from "./PracticeHelp";
 import { CenterMessage, Modal, TestShell } from "./TestShell";
 
@@ -80,7 +80,7 @@ function ResultModal({
       </div>
       <div className="flex flex-wrap items-start justify-end gap-3 border-t border-bb-line px-6 py-4">
         <div className="mr-auto">
-          <DesmosButton q={q} onStart={onClose} />
+          {subjectOf(q.domain) === "Math" && <DesmosButton q={q} onStart={onClose} />}
         </div>
         <button className="bb-btn bb-btn-outline" onClick={onClose}>
           Review question
@@ -144,6 +144,10 @@ export function PracticeRunner({ bank }: { bank: Question[] }) {
   const item = m.items[qid] ?? { timeMs: 0 };
   const last = m.index === m.questionIds.length - 1;
   const title = `Practice: ${session.title}`;
+  const isMath = m.questionIds.some((id) => {
+    const itemQ = byId.get(id);
+    return !itemQ || subjectOf(itemQ.domain) === "Math";
+  });
   const finish = async () => {
     const done = { ...session, finishedAt: Date.now() };
     saveSession(done);
@@ -168,6 +172,7 @@ export function PracticeRunner({ bank }: { bank: Question[] }) {
   return (
     <TestShell
       title={title}
+      isMath={isMath}
       navTitle={`${title} — Questions`}
       name={name}
       seconds={session.elapsed}

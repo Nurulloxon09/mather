@@ -26,7 +26,19 @@ import {
   timedSeconds,
 } from "@/lib/session";
 import { useProgress } from "@/lib/useProgress";
-import { DIFFICULTIES, DOMAINS, LETTERS, SKILLS, type Difficulty, type Domain, type Question } from "@/lib/types";
+import {
+  DIFFICULTIES,
+  DOMAINS,
+  EBRW_DOMAINS,
+  LETTERS,
+  MATH_DOMAINS,
+  SKILLS,
+  subjectOf,
+  type Difficulty,
+  type Domain,
+  type Question,
+  type Subject,
+} from "@/lib/types";
 
 // ---------- Filters (kept in the URL so a filtered view can be linked to) ----------
 
@@ -52,6 +64,16 @@ const STATUS_OPTIONS: { value: Status; label: string }[] = [
 ];
 const TYPE_LABEL: Record<Question["type"], string> = { mcq: "Multiple choice", spr: "Grid-in" };
 
+type SubjectParam = "math" | "ebrw";
+const SUBJECT_TO_PARAM: Record<Subject, SubjectParam> = {
+  Math: "math",
+  "Reading and Writing": "ebrw",
+};
+const SUBJECT_OPTIONS = [
+  ["Math", "Math"],
+  ["Reading and Writing", "Reading & Writing"],
+] as const satisfies readonly (readonly [Subject, string])[];
+
 function readFilters(params: URLSearchParams): Filters {
   const f = {} as Filters;
   for (const g of GROUPS) (f[g] as string[]) = params.getAll(g);
@@ -61,11 +83,15 @@ function readFilters(params: URLSearchParams): Filters {
 /** History entries opened from the sections, so "Sections" can step back instead of piling up. */
 const FROM_SECTIONS = "matherFromSections";
 
-function writeFilters(f: Filters, how: "replace" | "push" = "replace") {
+function writeFilters(f: Filters, how: "replace" | "push" = "replace", subjectParam?: SubjectParam | null) {
   const p = new URLSearchParams();
+  if (subjectParam) p.set("subject", subjectParam);
   for (const g of GROUPS) for (const v of f[g]) p.append(g, v);
-  // A bare /bank shows the sections, so the full list with nothing picked is /bank?all.
-  const url = `?${p.toString() || "all"}`;
+  // A bare /bank (or /bank?subject=...) shows the sections, so a full list with nothing picked uses ?all.
+  const hasFilters = GROUPS.some((g) => f[g].length > 0);
+  if (!hasFilters) p.set("all", "");
+  const qs = p.toString().replace(/=(?=&|$)/g, "");
+  const url = `?${qs}`;
   // Native history updates keep useSearchParams in sync without a server round trip.
   if (how === "push") window.history.pushState({ [FROM_SECTIONS]: true }, "", url);
   else window.history.replaceState({ [FROM_SECTIONS]: window.history.state?.[FROM_SECTIONS] }, "", url);
@@ -95,7 +121,7 @@ function matches(q: Question, f: Filters, progress: ProgressMap, except?: Group)
   return GROUPS.every((g) => g === except || !f[g].length || f[g].some((v) => valueMatches(g, v, q, progress)));
 }
 
-function setTitle(f: Filters) {
+function setTitle(f: Filters, subjectScope: Subject | null) {
   const parts: string[] = [];
   if (f.skill.length === 1) parts.push(f.skill[0]);
   else if (f.domain.length === 1 && !f.skill.length) parts.push(f.domain[0]);
@@ -103,7 +129,10 @@ function setTitle(f: Filters) {
   if (f.difficulty.length === 1) parts.push(f.difficulty[0]);
   if (f.status.length === 1) parts.push(STATUS_OPTIONS.find((o) => o.value === f.status[0])!.label);
   if (f.num.length) parts.push(`#${f.num[0]}`);
-  return parts.join(" · ") || "Mixed Math";
+  if (parts.length) return parts.join(" · ");
+  if (subjectScope === "Reading and Writing") return "Mixed Reading & Writing";
+  if (subjectScope === "Math") return "Mixed Math";
+  return "Mixed SAT";
 }
 
 // ---------- Small pieces ----------
@@ -248,7 +277,7 @@ function Detail({ q, p, onPractice }: { q: Question; p?: QuestionProgress; onPra
       </div>
 
       {reveal && (
-        <div className="space-y-3 border-l-2 border-bb-hair pl-4">
+        <div className="space-y-3 border-t border-bb-hair pt-4">
           <p className="text-[15px]">
             <span className="font-semibold">Correct answer: </span>
             <span dangerouslySetInnerHTML={{ __html: tex(correctAnswerTex(q)) }} />
@@ -325,8 +354,37 @@ export function Bank({
   const byId = useMemo(() => new Map(bank.map((q) => [q.id, q])), [bank]);
   const progress = useProgress(serverProgress, byId);
   const filters = useMemo(() => readFilters(new URLSearchParams(params.toString())), [params]);
-  // Any query (a filter, or ?all) is the question list; a bare /bank is the four sections.
-  const browsing = params.toString() !== "";
+
+  const rawSubject = params.get("subject");
+  const urlSubjectParam: SubjectParam | null = rawSubject === "ebrw" ? "ebrw" : rawSubject === "math" ? "math" : null;
+  const activeSubject: Subject = urlSubjectParam === "ebrw" ? "Reading and Writing" : "Math";
+
+  // Any filter param or ?all opens the question list; bare /bank or /bank?subject=... shows the sections.
+  const anyFilter = GROUPS.some((g) => filters[g].length > 0);
+  const browsing = anyFilter || params.has("all");
+
+  // Infer subject scope in question-list view: explicit URL subject, or inferred if all filtered domains/skills belong to one subject.
+  const listSubjectScope: Subject | null = useMemo(() => {
+    if (urlSubjectParam === "ebrw") return "Reading and Writing";
+    if (urlSubjectParam === "math") return "Math";
+    if (filters.domain.length > 0 || filters.skill.length > 0) {
+      const ds = new Set<Subject>();
+      for (const d of filters.domain) ds.add(subjectOf(d));
+      for (const s of filters.skill) {
+        const owner = DOMAINS.find((d) => SKILLS[d].includes(s));
+        if (owner) ds.add(subjectOf(owner));
+      }
+      if (ds.size === 1) return [...ds][0];
+    }
+    return null;
+  }, [urlSubjectParam, filters.domain, filters.skill]);
+
+  const scopedBank = useMemo(() => {
+    if (!browsing) return bank.filter((q) => subjectOf(q.domain) === activeSubject);
+    if (urlSubjectParam === "ebrw") return bank.filter((q) => subjectOf(q.domain) === "Reading and Writing");
+    if (urlSubjectParam === "math") return bank.filter((q) => subjectOf(q.domain) === "Math");
+    return bank;
+  }, [bank, browsing, activeSubject, urlSubjectParam]);
 
   const [open, setOpen] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
@@ -338,29 +396,29 @@ export function Bank({
 
   const sorted = useMemo(
     () =>
-      [...bank].sort(
+      [...scopedBank].sort(
         (a, b) =>
           a.source.localeCompare(b.source) ||
           DOMAINS.indexOf(a.domain) - DOMAINS.indexOf(b.domain) ||
           a.sourceNumber - b.sourceNumber,
       ),
-    [bank],
+    [scopedBank],
   );
   const shown = useMemo(() => sorted.filter((q) => matches(q, filters, progress)), [sorted, filters, progress]);
   const facet = (g: Group, v: string) =>
-    bank.filter((q) => matches(q, filters, progress, g) && valueMatches(g, v, q, progress)).length;
+    scopedBank.filter((q) => matches(q, filters, progress, g) && valueMatches(g, v, q, progress)).length;
 
   const update = (g: Group, v: string) => {
     const list = filters[g] as string[];
     const next = { ...filters, [g]: list.includes(v) ? list.filter((x) => x !== v) : [...list, v] } as Filters;
     // Dropping a domain also drops its skills.
     if (g === "domain" && list.includes(v)) next.skill = next.skill.filter((s) => !SKILLS[v as Domain].includes(s));
-    writeFilters(next);
+    writeFilters(next, "replace", urlSubjectParam);
     setLimit(PAGE);
     setOpen(null);
   };
   const clear = () => {
-    writeFilters(NO_FILTERS);
+    writeFilters(NO_FILTERS, "replace", urlSubjectParam);
     setNumText("");
     setLimit(PAGE);
   };
@@ -370,16 +428,20 @@ export function Bank({
     setNumText(text);
     const ranges = parseNumberRanges(text);
     if (ranges === null) return;
-    writeFilters({ ...filters, num: ranges.length ? [formatRanges(ranges)] : [] });
+    writeFilters({ ...filters, num: ranges.length ? [formatRanges(ranges)] : [] }, "replace", urlSubjectParam);
     if (ranges.length && !filters.num.length) setOrder("book");
     setLimit(PAGE);
     setOpen(null);
   };
-  const anyFilter = GROUPS.some((g) => filters[g].length > 0);
+
+  const switchSubject = (nextSubject: Subject) => {
+    const url = nextSubject === "Reading and Writing" ? "?subject=ebrw" : window.location.pathname;
+    window.history.replaceState(window.history.state, "", url);
+  };
 
   // Into the list from the sections (a new history entry, so Back returns), and out again.
-  const browse = (pick: Partial<Filters>) => {
-    writeFilters({ ...NO_FILTERS, ...pick }, "push");
+  const browse = (pick: Partial<Filters>, subjectScope: SubjectParam | null = urlSubjectParam) => {
+    writeFilters({ ...NO_FILTERS, ...pick }, "push", subjectScope);
     setNumText("");
     setOrder("random");
     setLimit(PAGE);
@@ -388,19 +450,27 @@ export function Bank({
   };
   const toSections = () => {
     if (window.history.state?.[FROM_SECTIONS]) return window.history.back();
-    window.history.pushState(null, "", window.location.pathname);
+    const backUrl = listSubjectScope === "Reading and Writing" ? "?subject=ebrw" : window.location.pathname;
+    window.history.pushState(null, "", backUrl);
     window.scrollTo(0, 0);
   };
 
+  const allowedDomains = useMemo(() => {
+    if (listSubjectScope === "Reading and Writing") return EBRW_DOMAINS;
+    if (listSubjectScope === "Math") return MATH_DOMAINS;
+    return DOMAINS;
+  }, [listSubjectScope]);
+
   // A picked section stays in the Topic menu even before it has questions.
-  const domains = DOMAINS.filter((d) => filters.domain.includes(d) || bank.some((q) => q.domain === d));
-  const difficulties = DIFFICULTIES.filter((d) => bank.some((q) => q.difficulty === d));
-  const sources = [...new Set(bank.map((q) => q.source))];
+  const domains = allowedDomains.filter((d) => filters.domain.includes(d) || scopedBank.some((q) => q.domain === d));
+  const difficulties = DIFFICULTIES.filter((d) => scopedBank.some((q) => q.difficulty === d));
+  const sources = [...new Set(scopedBank.map((q) => q.source))];
+  const hasSpr = scopedBank.some((q) => q.type === "spr");
 
   const pool = mode === "timed" ? shown.filter((q) => !q.flag) : shown;
   const byNumber = filters.num.length > 0;
   const n = byNumber ? pool.length : Math.max(1, Math.min(count || 1, pool.length));
-  const title = setTitle(filters);
+  const title = setTitle(filters, listSubjectScope);
   // Numbers restart in each chapter (and book), so the list is headed by chapter when it spans several.
   const chapter = (q: Question) => (sources.length > 1 ? `${q.source} · ${q.domain}` : q.domain);
   const chapters = [...new Set(shown.map(chapter))];
@@ -429,27 +499,30 @@ export function Bank({
   const clearGroup = (...gs: Group[]) => {
     const next = { ...filters };
     for (const g of gs) (next[g] as string[]) = [];
-    writeFilters(next);
+    writeFilters(next, "replace", urlSubjectParam);
     setLimit(PAGE);
   };
   // Topics: each domain, then its skills. Picking a skill narrows within its domain.
   const topicOptions: Option[] = domains.flatMap((d) => [
     { value: `d:${d}`, label: d, count: facet("domain", d), on: filters.domain.includes(d), strong: true },
     ...SKILLS[d]
-      .filter((sk) => filters.skill.includes(sk) || bank.some((q) => q.skill === sk))
+      .filter((sk) => filters.skill.includes(sk) || scopedBank.some((q) => q.skill === sk))
       .map((sk) => ({ value: `s:${sk}`, label: sk, count: facet("skill", sk), on: filters.skill.includes(sk), indent: true })),
   ]);
 
   // Nothing in the picked section or topic yet (as opposed to filters that leave nothing).
   const emptyTopic =
     (filters.domain.length > 0 || filters.skill.length > 0) &&
-    !bank.some((q) => matches(q, { ...NO_FILTERS, domain: filters.domain, skill: filters.skill }, progress));
+    !scopedBank.some((q) => matches(q, { ...NO_FILTERS, domain: filters.domain, skill: filters.skill }, progress));
 
   const sections = (
     <Sections
-      bank={bank}
+      subject={activeSubject}
+      bank={scopedBank}
       progress={progress}
-      onPick={(pick: SectionPick) => browse("skill" in pick ? { skill: [pick.skill] } : { domain: [pick.domain] })}
+      onPick={(pick: SectionPick) =>
+        browse("skill" in pick ? { skill: [pick.skill] } : { domain: [pick.domain] }, SUBJECT_TO_PARAM[activeSubject])
+      }
     />
   );
 
@@ -479,12 +552,14 @@ export function Bank({
               onClear={() => clearGroup("difficulty")}
             />
           )}
-          <FilterMenu
-            label="Type"
-            options={menu("type", (["mcq", "spr"] as const).map((t) => ({ value: t, label: TYPE_LABEL[t] })))}
-            onToggle={(v) => update("type", v)}
-            onClear={() => clearGroup("type")}
-          />
+          {hasSpr && (
+            <FilterMenu
+              label="Type"
+              options={menu("type", (["mcq", "spr"] as const).map((t) => ({ value: t, label: TYPE_LABEL[t] })))}
+              onToggle={(v) => update("type", v)}
+              onClear={() => clearGroup("type")}
+            />
+          )}
           {sources.length > 1 && (
             <FilterMenu
               label="Source"
@@ -575,7 +650,7 @@ export function Bank({
         {shown.length === 0 && emptyTopic ? (
           <div className="gw-empty">
             <h3>No questions here yet</h3>
-            <p>Add some from a book chapter on the Upload page.</p>
+            <p>Add some from a book chapter or question bank on the Upload page.</p>
             <Link href="/upload">Upload</Link>
           </div>
         ) : shown.length === 0 ? (
@@ -634,10 +709,21 @@ export function Bank({
       title: "Practice",
       eyebrow: "Open a section, then pick a topic",
       aside: (
-        <button className="gw-text-button" onClick={() => browse({})}>
-          All {bank.length} questions
-          <ArrowRight size={14} aria-hidden="true" />
-        </button>
+        <div className="flex flex-wrap items-center gap-4">
+          <GlassSegment
+            value={activeSubject}
+            options={SUBJECT_OPTIONS}
+            onChange={switchSubject}
+            label="Subject"
+          />
+          <button
+            className="gw-text-button whitespace-nowrap"
+            onClick={() => browse({}, SUBJECT_TO_PARAM[activeSubject])}
+          >
+            All {scopedBank.length} questions
+            <ArrowRight size={14} aria-hidden="true" />
+          </button>
+        </div>
       ),
       content: browsing ? null : sections,
     },
@@ -645,7 +731,13 @@ export function Bank({
       id: "questions",
       label: "Questions",
       icon: ListChecks,
-      title: anyFilter ? title : "All questions",
+      title: anyFilter
+        ? title
+        : listSubjectScope === "Reading and Writing"
+          ? "Reading & Writing"
+          : listSubjectScope === "Math"
+            ? "Math"
+            : "All questions",
       eyebrow: (
         <button className="gw-back" onClick={toSections}>
           <ChevronLeft size={15} aria-hidden="true" />
@@ -663,7 +755,7 @@ export function Bank({
       view={browsing ? "questions" : "sections"}
       onViewChange={(id) => {
         if (id === "sections" && browsing) toSections();
-        else if (id === "questions" && !browsing) browse({});
+        else if (id === "questions" && !browsing) browse({}, SUBJECT_TO_PARAM[activeSubject]);
       }}
       banner={notice}
       footerNote={browsing ? "Status shows how your most recent attempt at each question went." : undefined}

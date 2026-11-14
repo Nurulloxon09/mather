@@ -5,7 +5,7 @@ import { ChartSpline, Lightbulb, MessageCircleQuestion } from "lucide-react";
 import { api, ApiError } from "@/lib/client/api";
 import type { DesmosWay } from "@/lib/desmos";
 import { correctAnswerTex, isCorrect } from "@/lib/session";
-import type { ItemState, Question } from "@/lib/types";
+import { subjectOf, type ItemState, type Question } from "@/lib/types";
 import { Rich } from "../Rich";
 import { useDesmosHelp } from "./TestShell";
 
@@ -213,10 +213,11 @@ export function DesmosButton({
 export function PracticeHelp({ q, item }: { q: Question; item: ItemState }) {
   const checked = !!item.checked;
   const wrong = checked && !!item.answer && !isCorrect(q, item.answer);
+  const showDesmos = checked && subjectOf(q.domain) === "Math";
   return (
     <div className="mt-8 space-y-3 border-t border-bb-hair pt-5">
       <Hints q={q} canAsk={!checked} />
-      {checked && (
+      {showDesmos && (
         <div className="flex flex-wrap items-start gap-3">
           <DesmosButton q={q} />
         </div>

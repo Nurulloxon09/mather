@@ -20,9 +20,12 @@ import {
   House,
   LayoutGrid,
   ListChecks,
+  PenTool,
+  Quote,
   Search,
   Sigma,
   Snail,
+  SpellCheck,
   Target,
   Timer,
   Triangle,
@@ -63,12 +66,16 @@ const KIND: Record<SessionSummary["kind"], { label: string; plural: string; icon
   practice: { label: "Practice", plural: "Practice", icon: BookOpen },
 };
 
-/** Sections in the order the Practice page shows them, with short names. */
+/** Sections across Math and Reading & Writing, with short names and icons. */
 const SECTIONS: { domain: Domain; label: string; icon: LucideIcon }[] = [
   { domain: "Algebra", label: "Algebra", icon: Variable },
   { domain: "Advanced Math", label: "Advanced Math", icon: Sigma },
   { domain: "Geometry and Trigonometry", label: "Geometry", icon: Triangle },
   { domain: "Problem-Solving and Data Analysis", label: "Problem Solving", icon: ChartPie },
+  { domain: "Information and Ideas", label: "Information & Ideas", icon: BookOpen },
+  { domain: "Craft and Structure", label: "Craft & Structure", icon: Quote },
+  { domain: "Expression of Ideas", label: "Expression of Ideas", icon: PenTool },
+  { domain: "Standard English Conventions", label: "Standard English", icon: SpellCheck },
 ];
 const sectionIcon = (domain: Domain) => SECTIONS.find((x) => x.domain === domain)?.icon ?? LayoutGrid;
 
@@ -749,7 +756,7 @@ export function StatsView({
   );
 
   const views: GlassView[] = [
-    { id: "overview", label: "Overview", icon: House, title: "Overview", eyebrow: "SAT Math progress", aside: periodControl, content: overview },
+    { id: "overview", label: "Overview", icon: House, title: "Overview", eyebrow: "SAT progress", aside: periodControl, content: overview },
     {
       id: "history",
       label: "History",
