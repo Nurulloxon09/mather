@@ -1,10 +1,21 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { Highlighter } from "lucide-react";
 import { entryToTex, isAllowedPartial } from "@/lib/grid";
+import { HIGHLIGHT_COLORS } from "@/lib/highlights";
 import { tex } from "@/lib/rich";
-import { LETTERS, type ChoiceLetter, type ItemState, type Question } from "@/lib/types";
+import {
+  LETTERS,
+  subjectOf,
+  type ChoiceLetter,
+  type HighlightColor,
+  type ItemState,
+  type Question,
+  type TextHighlight,
+} from "@/lib/types";
 import { Rich } from "../Rich";
+import { HighlightablePassage } from "./HighlightablePassage";
 import { BookmarkIcon, StrikeToggleIcon } from "./icons";
 
 export type Reveal = { correctLetter?: ChoiceLetter } | null;
@@ -16,6 +27,13 @@ function QuestionHeader({
   strikeMode,
   onToggleStrike,
   showStrike,
+  canHighlight,
+  highlightMode,
+  onToggleHighlightMode,
+  highlightColor,
+  onPickHighlightColor,
+  hasHighlights,
+  onClearHighlights,
 }: {
   number: number;
   marked: boolean;
@@ -23,7 +41,15 @@ function QuestionHeader({
   strikeMode: boolean;
   onToggleStrike: () => void;
   showStrike: boolean;
+  canHighlight: boolean;
+  highlightMode: boolean;
+  onToggleHighlightMode: () => void;
+  highlightColor: HighlightColor;
+  onPickHighlightColor: (c: HighlightColor) => void;
+  hasHighlights: boolean;
+  onClearHighlights: () => void;
 }) {
+  const activeSwatch = HIGHLIGHT_COLORS.find((c) => c.id === highlightColor)?.swatch ?? "#fde047";
   return (
     <div className="mb-5">
       <div className="flex h-10 items-stretch bg-bb-bar">
@@ -43,12 +69,62 @@ function QuestionHeader({
           />
           Mark for Review
         </button>
+
+        {canHighlight && (
+          <div className="ml-auto mr-1 flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onToggleHighlightMode}
+              aria-pressed={highlightMode}
+              title="Select passage text to highlight evidence"
+              className={`my-1.5 flex items-center gap-1.5 rounded px-2.5 py-1 text-[13px] font-semibold whitespace-nowrap ${
+                highlightMode ? "bg-bb-blue text-white" : "text-bb-ink hover:bg-white"
+              }`}
+            >
+              <Highlighter size={15} aria-hidden="true" />
+              <span>Highlight</span>
+              <span
+                className="h-3 w-3 rounded-full border border-black/25"
+                style={{ backgroundColor: activeSwatch }}
+                aria-hidden="true"
+              />
+            </button>
+            {highlightMode && (
+              <div className="flex items-center gap-1 rounded bg-white px-1.5 py-1 shadow-xs" aria-label="Highlight color">
+                {HIGHLIGHT_COLORS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    title={c.label}
+                    aria-label={`${c.label} highlighter`}
+                    aria-pressed={highlightColor === c.id}
+                    onClick={() => onPickHighlightColor(c.id)}
+                    className={`h-4 w-4 rounded-full border ${
+                      highlightColor === c.id ? "border-[#1e1e1e] ring-2 ring-[#1e1e1e]/30" : "border-black/20"
+                    }`}
+                    style={{ backgroundColor: c.swatch }}
+                  />
+                ))}
+              </div>
+            )}
+            {hasHighlights && (
+              <button
+                type="button"
+                onClick={onClearHighlights}
+                className="my-1.5 rounded px-2 py-1 text-[12px] font-semibold text-bb-muted hover:bg-white hover:text-bb-red whitespace-nowrap"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        )}
+
         {showStrike && (
           <button
             onClick={onToggleStrike}
             aria-pressed={strikeMode}
             title="Cross out answer choices you think are wrong"
-            className={`ml-auto mr-2 my-1.5 grid place-items-center rounded px-1 ${
+            className={`${canHighlight ? "ml-1" : "ml-auto"} mr-2 my-1.5 grid place-items-center rounded px-1 ${
               strikeMode ? "bg-bb-blue text-white" : "text-bb-ink hover:bg-white"
             }`}
           >
@@ -172,6 +248,7 @@ export function QuestionView({
   onAnswer,
   onToggleMark,
   onCross,
+  onHighlights,
   locked = false,
   reveal = null,
   footer,
@@ -184,11 +261,18 @@ export function QuestionView({
   onAnswer: (a: string | undefined) => void;
   onToggleMark: () => void;
   onCross: (l: ChoiceLetter) => void;
+  onHighlights?: (highlights: TextHighlight[]) => void;
   locked?: boolean;
   reveal?: Reveal;
   /** Shown under the answer area (practice help). */
   footer?: ReactNode;
 }) {
+  const [highlightMode, setHighlightMode] = useState(false);
+  const [highlightColor, setHighlightColor] = useState<HighlightColor>("yellow");
+
+  const canHighlight = subjectOf(q.domain) === "Reading and Writing" && !!onHighlights;
+  const highlights = item.highlights ?? [];
+
   const header = (
     <QuestionHeader
       number={number}
@@ -197,6 +281,13 @@ export function QuestionView({
       strikeMode={strikeMode}
       onToggleStrike={onToggleStrike}
       showStrike={q.type === "mcq"}
+      canHighlight={canHighlight}
+      highlightMode={highlightMode}
+      onToggleHighlightMode={() => setHighlightMode((v) => !v)}
+      highlightColor={highlightColor}
+      onPickHighlightColor={setHighlightColor}
+      hasHighlights={highlights.length > 0}
+      onClearHighlights={() => onHighlights?.([])}
     />
   );
 
@@ -205,7 +296,17 @@ export function QuestionView({
     <div className="h-full overflow-auto">
       <div className="mx-auto max-w-[720px] px-6 py-8">
         {header}
-        <Rich src={q.stem} />
+        {canHighlight ? (
+          <HighlightablePassage
+            src={q.stem}
+            highlights={highlights}
+            highlightMode={highlightMode}
+            activeColor={highlightColor}
+            onChange={onHighlights!}
+          />
+        ) : (
+          <Rich src={q.stem} />
+        )}
         {q.type === "spr" ? (
           <GridInput value={item.answer ?? ""} locked={locked} onChange={onAnswer} />
         ) : (

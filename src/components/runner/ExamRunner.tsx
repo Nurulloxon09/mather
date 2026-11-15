@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckYourWork } from "../bluebook/CheckYourWork";
 import { QuestionView } from "../bluebook/QuestionView";
 import { attemptFor } from "@/lib/attempts";
-import { addTime, currentId, goTo, gridCells, setAnswer, toggleCross, toggleMark } from "@/lib/module";
+import { addTime, currentId, goTo, gridCells, setAnswer, setHighlights, toggleCross, toggleMark } from "@/lib/module";
 import { flush, flushWithin, queue } from "@/lib/outbox";
 import { buildModule, routeFor } from "@/lib/select";
 import {
@@ -173,6 +173,7 @@ export function ExamRunner({ bank }: { bank: Question[] }) {
       seconds={secondsLeft}
       timerHidden={session.timerHidden}
       timerLocked={secondsLeft <= WARNING_AT}
+      scratchKey={m.onReview ? "review" : qid}
       onToggleTimer={() => setSession({ ...session, timerHidden: !session.timerHidden })}
       warning={warning}
       moreItems={[
@@ -231,6 +232,7 @@ export function ExamRunner({ bank }: { bank: Question[] }) {
           onAnswer={(a) => updateModule((x) => setAnswer(x, a))}
           onToggleMark={() => updateModule(toggleMark)}
           onCross={(l) => updateModule((x) => toggleCross(x, l))}
+          onHighlights={(h) => updateModule((x) => setHighlights(x, h))}
         />
       ) : (
         <CenterMessage title="Question not found">This question was removed from the bank.</CenterMessage>

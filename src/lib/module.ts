@@ -1,5 +1,5 @@
 import type { ModuleState } from "./session";
-import type { ChoiceLetter, ItemState } from "./types";
+import type { ChoiceLetter, ItemState, TextHighlight } from "./types";
 
 // Pure updates on a module's state, shared by the exam and practice runners.
 
@@ -36,6 +36,11 @@ export function toggleCross(m: ModuleState, letter: ChoiceLetter): ModuleState {
     crossed: [...crossed, letter],
     answer: item?.answer === letter ? undefined : item?.answer,
   });
+}
+
+export function setHighlights(m: ModuleState, highlights: TextHighlight[]): ModuleState {
+  const id = currentId(m);
+  return patchItem(m, id, { highlights });
 }
 
 export function goTo(m: ModuleState, index: number): ModuleState {

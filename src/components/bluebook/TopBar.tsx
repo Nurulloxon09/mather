@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Pencil } from "lucide-react";
 import { MathDirections, ReadingDirections } from "./Directions";
 import {
   CalculatorIcon,
@@ -68,12 +69,16 @@ export function TopBar({
   seconds,
   timerHidden,
   timerLocked,
+  timerLabel,
+  timerTone = "normal",
   onToggleTimer,
   warning,
   calcOpen,
   onCalc,
   refOpen,
   onRef,
+  scratchOpen = false,
+  onScratch,
   moreItems,
   isMath = true,
 }: {
@@ -82,12 +87,16 @@ export function TopBar({
   timerHidden: boolean;
   /** When true the timer can't be hidden (last 5 minutes). */
   timerLocked: boolean;
+  timerLabel?: string;
+  timerTone?: "normal" | "warning" | "danger";
   onToggleTimer: () => void;
   warning?: string | null;
   calcOpen: boolean;
   onCalc: () => void;
   refOpen: boolean;
   onRef: () => void;
+  scratchOpen?: boolean;
+  onScratch?: () => void;
   moreItems: MoreItem[];
   isMath?: boolean;
 }) {
@@ -106,6 +115,12 @@ export function TopBar({
   }, [moreOpen]);
 
   const showTime = !timerHidden || timerLocked;
+  const clockTone =
+    timerLocked || timerTone === "danger"
+      ? "text-bb-red"
+      : timerTone === "warning"
+        ? "text-bb-amber-ink"
+        : "";
 
   return (
     <header className="relative z-30 shrink-0 bg-bb-chrome">
@@ -124,11 +139,18 @@ export function TopBar({
 
         <div className="relative flex flex-col items-center">
           {showTime ? (
-            <div
-              className={`text-[22px] font-bold tabular-nums leading-tight ${timerLocked ? "text-bb-red" : ""}`}
-              aria-live="off"
-            >
-              {formatClock(seconds)}
+            <div className="flex flex-col items-center">
+              <div
+                className={`text-[22px] font-bold tabular-nums leading-tight ${clockTone}`}
+                aria-live="off"
+              >
+                {formatClock(seconds)}
+              </div>
+              {timerLabel && (
+                <span className={`text-[11px] font-semibold leading-none whitespace-nowrap ${clockTone || "text-bb-muted"}`}>
+                  {timerLabel}
+                </span>
+              )}
             </div>
           ) : (
             <ClockIcon width={26} height={26} className="my-[1px]" />
@@ -160,6 +182,11 @@ export function TopBar({
                 <ReferenceIcon />
               </Tool>
             </>
+          )}
+          {onScratch && (
+            <Tool label="Scratchpad" active={scratchOpen} onClick={onScratch}>
+              <Pencil size={22} strokeWidth={1.8} aria-hidden="true" />
+            </Tool>
           )}
           <Tool label={fs ? "Exit Full" : "Fullscreen"} onClick={toggleFs}>
             {fs ? <ExitFullscreenIcon /> : <FullscreenIcon />}

@@ -36,6 +36,8 @@ export type PracticeSession = {
   title: string;
   module: ModuleState;
   elapsed: number;
+  /** Optional per-question countdown target in seconds (for pacing). */
+  perQuestionSeconds?: number;
   timerHidden: boolean;
   finishedAt?: number;
   syncedAt?: number;
@@ -147,7 +149,15 @@ export function newModule(questionIds: string[], seconds = MODULE_SECONDS): Modu
   };
 }
 
-export function newPracticeSession(title: string, questionIds: string[]): PracticeSession {
+export function newPracticeSession(
+  title: string,
+  questionIds: string[],
+  perQuestionSeconds?: number,
+): PracticeSession {
+  const target =
+    perQuestionSeconds && Number.isFinite(perQuestionSeconds) && perQuestionSeconds > 0
+      ? Math.round(perQuestionSeconds)
+      : undefined;
   return {
     id: newId(),
     mode: "practice",
@@ -155,6 +165,7 @@ export function newPracticeSession(title: string, questionIds: string[]): Practi
     title,
     module: newModule(questionIds, 0),
     elapsed: 0,
+    ...(target ? { perQuestionSeconds: target } : {}),
     timerHidden: false,
   };
 }

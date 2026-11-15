@@ -121,11 +121,21 @@ export type Question = {
   uploadId?: string;
 };
 
+export type HighlightColor = "yellow" | "blue" | "pink" | "green";
+
+export type TextHighlight = {
+  id: string;
+  start: number;
+  end: number;
+  color: HighlightColor;
+};
+
 /** Per-question state inside a practice set or exam module. */
 export type ItemState = {
   answer?: string;
   marked?: boolean;
   crossed?: ChoiceLetter[];
+  highlights?: TextHighlight[];
   /** Milliseconds spent on this question. */
   timeMs: number;
   /** Practice mode: the answer was checked. */

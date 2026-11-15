@@ -7,7 +7,7 @@ import { QuestionView } from "../bluebook/QuestionView";
 import { formatClock } from "../bluebook/TopBar";
 import { Rich } from "../Rich";
 import { attemptFor } from "@/lib/attempts";
-import { addTime, currentId, goTo, gridCells, patchItem, setAnswer, toggleCross, toggleMark } from "@/lib/module";
+import { addTime, currentId, goTo, gridCells, patchItem, setAnswer, setHighlights, toggleCross, toggleMark } from "@/lib/module";
 import { flush, flushWithin, queue } from "@/lib/outbox";
 import {
   answerTex,
@@ -169,15 +169,39 @@ export function PracticeRunner({ bank }: { bank: Question[] }) {
     if (item.checked) saveChecked(session, m, qid, !item.marked, item.checkedAt);
   };
 
+  const targetSec = session.perQuestionSeconds;
+  const qSpentSec = Math.floor(item.timeMs / 1000);
+  const qRemainingSec = targetSec ? targetSec - qSpentSec : null;
+  const timerSeconds = qRemainingSec !== null ? Math.max(0, qRemainingSec) : session.elapsed;
+  const timerTone: "normal" | "warning" | "danger" =
+    qRemainingSec === null
+      ? "normal"
+      : qRemainingSec <= 0
+        ? "danger"
+        : qRemainingSec <= Math.min(30, Math.max(10, Math.floor(targetSec! * 0.25)))
+          ? "warning"
+          : "normal";
+  const timerLabel =
+    qRemainingSec === null
+      ? undefined
+      : qRemainingSec <= 0
+        ? qRemainingSec < 0
+          ? `Time's up (+${formatClock(-qRemainingSec)})`
+          : "Time's up"
+        : `Q${m.index + 1} target · ${formatClock(targetSec!)}`;
+
   return (
     <TestShell
       title={title}
       isMath={isMath}
       navTitle={`${title} — Questions`}
       name={name}
-      seconds={session.elapsed}
+      seconds={timerSeconds}
       timerHidden={session.timerHidden}
       timerLocked={false}
+      timerLabel={timerLabel}
+      timerTone={timerTone}
+      scratchKey={qid}
       onToggleTimer={() => setSession({ ...session, timerHidden: !session.timerHidden })}
       moreItems={[
         { label: "Finish Set", onClick: () => void finish() },
@@ -217,6 +241,7 @@ export function PracticeRunner({ bank }: { bank: Question[] }) {
           onAnswer={(a) => updateModule((x) => setAnswer(x, a))}
           onToggleMark={mark}
           onCross={(l) => updateModule((x) => toggleCross(x, l))}
+          onHighlights={(h) => updateModule((x) => setHighlights(x, h))}
           locked={!!item.checked}
           reveal={item.checked && q.type === "mcq" ? { correctLetter: q.answer } : null}
           footer={<PracticeHelp q={q} item={item} />}

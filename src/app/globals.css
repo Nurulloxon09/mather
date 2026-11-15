@@ -191,6 +191,29 @@ body {
   font-size: 1.08em;
 }
 
+/* ---------- Passage highlights (English) ---------- */
+.bb-hl {
+  border-radius: 2px;
+  padding: 0.04em 0;
+  color: inherit;
+  cursor: pointer;
+}
+.bb-hl[data-hl-color="yellow"] {
+  background-color: #fef08a;
+}
+.bb-hl[data-hl-color="blue"] {
+  background-color: #bfdbfe;
+}
+.bb-hl[data-hl-color="pink"] {
+  background-color: #fbcfe8;
+}
+.bb-hl[data-hl-color="green"] {
+  background-color: #bbf7d0;
+}
+.bb-hl:hover {
+  filter: brightness(0.95);
+}
+
 /* ---------- Answer choices ---------- */
 .bb-choice {
   border: 1.5px solid var(--bb-ink);

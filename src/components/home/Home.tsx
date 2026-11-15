@@ -126,6 +126,7 @@ export function Home({ bank, recent }: { bank: Question[]; recent: Promise<Recen
   const [activePractice, setActivePractice] = useState<Session | undefined>();
   const [activeExam, setActiveExam] = useState<Session | undefined>();
   const [adaptive, setAdaptive] = useState(true);
+  const [targetMinutes, setTargetMinutes] = useState("");
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- hydrate from localStorage after mount */
@@ -144,11 +145,17 @@ export function Home({ bank, recent }: { bank: Question[]; recent: Promise<Recen
   const mathCount = bank.filter((q) => subjectOf(q.domain) === "Math").length;
   const ebrwCount = bank.filter((q) => subjectOf(q.domain) === "Reading and Writing").length;
 
+  const parsedMinutes = Number(targetMinutes);
+  const perQuestionSeconds =
+    targetMinutes.trim() !== "" && Number.isFinite(parsedMinutes) && parsedMinutes > 0
+      ? Math.round(parsedMinutes * 60)
+      : undefined;
+
   const startPractice = (title: string, ids: string[]) => {
     if (activePractice && !confirm(`"${sessionLabel(activePractice)}" is still in progress. Start a new set instead?`)) {
       return;
     }
-    saveSession(newPracticeSession(title, ids));
+    saveSession(newPracticeSession(title, ids, perQuestionSeconds));
     router.push("/practice");
   };
   const quickPractice = () => startPractice("Quick 10", shuffle(bank).slice(0, 10).map((q) => q.id));
@@ -240,13 +247,28 @@ export function Home({ bank, recent }: { bank: Question[]; recent: Promise<Recen
               onClick={() => router.push("/bank")}
               className={CARD_FOCUS}
             />
-            <div className="flex gap-5 text-sm">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
               <button className="text-bb-muted hover:text-bb-ink" onClick={quickPractice}>
                 Quick 10
               </button>
               <Link href="/bank?status=incorrect" className="text-bb-muted hover:text-bb-ink">
                 Redo missed
               </Link>
+              <label className="ml-auto flex items-center gap-1.5 text-bb-muted">
+                <span>Pace</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={60}
+                  step={0.5}
+                  placeholder="Off"
+                  value={targetMinutes}
+                  onChange={(e) => setTargetMinutes(e.target.value)}
+                  aria-label="Target minutes per question"
+                  className="w-16 rounded-md border border-bb-line bg-bb-surface px-2 py-0.5 text-sm text-bb-ink tabular-nums"
+                />
+                <span>min/q</span>
+              </label>
             </div>
           </div>
         </div>

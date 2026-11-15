@@ -392,6 +392,7 @@ export function Bank({
   // Chosen numbers default to book order, including when they come from a link.
   const [order, setOrder] = useState<"random" | "book">(filters.num.length ? "book" : "random");
   const [count, setCount] = useState(10);
+  const [targetMinutes, setTargetMinutes] = useState("");
   const [numText, setNumText] = useState(filters.num[0] ?? "");
 
   const sorted = useMemo(
@@ -475,10 +476,16 @@ export function Bank({
   const chapter = (q: Question) => (sources.length > 1 ? `${q.source} · ${q.domain}` : q.domain);
   const chapters = [...new Set(shown.map(chapter))];
 
+  const parsedMinutes = Number(targetMinutes);
+  const perQuestionSeconds =
+    mode === "practice" && targetMinutes.trim() !== "" && Number.isFinite(parsedMinutes) && parsedMinutes > 0
+      ? Math.round(parsedMinutes * 60)
+      : undefined;
+
   const start = (ids: string[], kind: "practice" | "timed", name: string) => {
     const existing = getActive(kind === "timed" ? "exam" : "practice");
     if (existing && !confirm(`"${sessionLabel(existing)}" is still in progress. Start a new one instead?`)) return;
-    saveSession(kind === "timed" ? newTimedSession(name, ids) : newPracticeSession(name, ids));
+    saveSession(kind === "timed" ? newTimedSession(name, ids) : newPracticeSession(name, ids, perQuestionSeconds));
     router.push(kind === "timed" ? "/exam" : "/practice");
   };
   const startSet = () => {
@@ -624,6 +631,22 @@ export function Bank({
                 questions
               </label>
             )}
+            {mode === "practice" && (
+              <label className="flex items-center gap-2 text-[13px] text-[var(--gw-muted)]">
+                <input
+                  type="number"
+                  min={0}
+                  max={60}
+                  step={0.5}
+                  placeholder="Off"
+                  value={targetMinutes}
+                  onChange={(e) => setTargetMinutes(e.target.value)}
+                  aria-label="Target minutes per question"
+                  className="gw-field w-20 tabular-nums"
+                />
+                min / question
+              </label>
+            )}
             <select
               value={order}
               onChange={(e) => setOrder(e.target.value as "random" | "book")}
@@ -640,7 +663,9 @@ export function Bank({
         </div>
         <p className="mt-3 text-[13px] text-[var(--gw-muted)]">
           {mode === "practice"
-            ? "Check each answer as you go and see the explanation right away."
+            ? perQuestionSeconds
+              ? `Check each answer as you go. ${formatClock(perQuestionSeconds)} countdown per question to train pacing.`
+              : "Check each answer as you go and see the explanation right away."
             : `${timedSeconds(n) / 60} minutes, no feedback until you submit, like a real module.`}
           {mode === "timed" && pool.length < shown.length && ` Flagged questions are left out.`}
         </p>

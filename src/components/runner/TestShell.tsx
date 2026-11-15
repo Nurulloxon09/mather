@@ -6,6 +6,7 @@ import { BottomBar } from "../bluebook/BottomBar";
 import { Calculator, preloadDesmos } from "../bluebook/Calculator";
 import type { GridCell } from "../bluebook/QuestionGrid";
 import { ReferenceSheet } from "../bluebook/ReferenceSheet";
+import { Scratchpad, type ScratchStroke } from "../bluebook/Scratchpad";
 import { TopBar, type MoreItem } from "../bluebook/TopBar";
 import type { DesmosWay } from "@/lib/desmos";
 
@@ -29,6 +30,8 @@ export function TestShell({
   seconds,
   timerHidden,
   timerLocked,
+  timerLabel,
+  timerTone,
   onToggleTimer,
   warning,
   moreItems,
@@ -39,6 +42,7 @@ export function TestShell({
   onReviewPage,
   showNav,
   isMath = true,
+  scratchKey,
   buttons,
   children,
 }: {
@@ -48,6 +52,8 @@ export function TestShell({
   seconds: number;
   timerHidden: boolean;
   timerLocked: boolean;
+  timerLabel?: string;
+  timerTone?: "normal" | "warning" | "danger";
   onToggleTimer: () => void;
   warning?: string | null;
   moreItems: MoreItem[];
@@ -58,11 +64,14 @@ export function TestShell({
   onReviewPage?: () => void;
   showNav?: boolean;
   isMath?: boolean;
+  scratchKey?: string;
   buttons: ReactNode;
   children: ReactNode;
 }) {
   const [calcOpen, setCalcOpen] = useState(false);
   const [refOpen, setRefOpen] = useState(false);
+  const [scratchOpen, setScratchOpen] = useState(false);
+  const [strokesByKey, setStrokesByKey] = useState<Record<string, ScratchStroke[]>>({});
   const [walkthrough, setWalkthrough] = useState<{ way: DesmosWay; answerLatex: string; key: number } | null>(null);
 
   useEffect(() => {
@@ -79,6 +88,15 @@ export function TestShell({
     setWalkthrough(null);
   };
 
+  const activeScratchKey = scratchKey ?? String(index);
+  const activeStrokes = strokesByKey[activeScratchKey] ?? [];
+  const updateStrokes = useCallback(
+    (next: ScratchStroke[]) => {
+      setStrokesByKey((prev) => ({ ...prev, [activeScratchKey]: next }));
+    },
+    [activeScratchKey],
+  );
+
   return (
     <div className="bb-light flex h-dvh flex-col overflow-hidden bg-white">
       <TopBar
@@ -86,12 +104,16 @@ export function TestShell({
         seconds={seconds}
         timerHidden={timerHidden}
         timerLocked={timerLocked}
+        timerLabel={timerLabel}
+        timerTone={timerTone}
         onToggleTimer={onToggleTimer}
         warning={warning}
         calcOpen={calcOpen}
         onCalc={() => (calcOpen ? closeCalc() : setCalcOpen(true))}
         refOpen={refOpen}
         onRef={() => setRefOpen((v) => !v)}
+        scratchOpen={scratchOpen}
+        onScratch={() => setScratchOpen((v) => !v)}
         moreItems={moreItems}
         isMath={isMath}
       />
@@ -107,6 +129,12 @@ export function TestShell({
         )}
         <main className="relative min-h-0 min-w-0 flex-1">
           <DesmosHelpContext.Provider value={desmosHelp}>{children}</DesmosHelpContext.Provider>
+          <Scratchpad
+            open={scratchOpen}
+            strokes={activeStrokes}
+            onChange={updateStrokes}
+            onClose={() => setScratchOpen(false)}
+          />
         </main>
       </div>
       <BottomBar
