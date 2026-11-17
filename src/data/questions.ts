@@ -1,9 +1,17 @@
 import type { Question } from "@/lib/types";
 import { centralIdeas } from "./ebrw/central-ideas";
+import { inferences } from "./ebrw/inferences";
 import { transitions } from "./ebrw/transitions";
 import { advancedMath } from "./math-hard-book/advanced-math";
 import { algebra } from "./math-hard-book/algebra";
 import { problemSolving } from "./math-hard-book/problem-solving";
 
 /** Built-in question bank (Phase 1). Later phases load questions from the database. */
-export const QUESTIONS: Question[] = [...algebra, ...advancedMath, ...problemSolving, ...centralIdeas, ...transitions];
+export const QUESTIONS: Question[] = [
+  ...algebra,
+  ...advancedMath,
+  ...problemSolving,
+  ...centralIdeas,
+  ...inferences,
+  ...transitions,
+];
